@@ -1,0 +1,23 @@
+{
+    "clangd.arguments": [
+        "--compile-commands-dir=build",
+        "--header-insertion=iwyu",
+        "--clang-tidy"
+    ],
+    "clangd.fallbackFlags": [
+        "-I${workspaceFolder}/build/_deps/raylib-src/src",
+        "-I${workspaceFolder}/include"
+    ],
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.formatOnSave": true,
+        "editor.rulers": [100]
+    },
+    "[c]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "editor.formatOnSave": true,
+        "editor.rulers": [100]
+    },
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "cmake.buildDirectory": "${workspaceFolder}/build"
+}
