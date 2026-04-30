@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31.10)
-project(GameProject)
+project(Stalin)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
@@ -33,18 +33,18 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(raylib)
 
-add_executable(game 
+add_executable(stalin 
     src/main.cpp
 )
 
-target_include_directories(game PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 find_package(Threads REQUIRED)
 
-target_link_libraries(game PRIVATE raylib Threads::Threads)
+target_link_libraries(stalin PRIVATE raylib Threads::Threads)
 
 
-add_custom_command(TARGET game POST_BUILD
+add_custom_command(TARGET stalin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     ${CMAKE_BINARY_DIR}/compile_commands.json
     ${CMAKE_SOURCE_DIR}/compile_commands.json
