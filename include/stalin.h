@@ -1,5 +1,5 @@
-#ifndef GAME_H
-#define GAME_H
+#ifndef STALIN_H
+#define STALIN_H
 
 #include "raylib.h"
 
