@@ -1,4 +1,4 @@
-#include "game.h"
+#include "stalin.h"
 #include <stdio.h>
 
 int main()
