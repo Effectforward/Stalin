@@ -43,6 +43,19 @@ find_package(Threads REQUIRED)
 
 target_link_libraries(stalin PRIVATE raylib Threads::Threads)
 
+if(MSVC)
+    target_compile_options(stalin PRIVATE /W4 /WX)
+else()
+    target_compile_options(stalin PRIVATE -Wall -Wextra -Werror -pedantic)
+endif()
+
+add_custom_command(TARGET stalin POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets
+    ${CMAKE_BINARY_DIR}/bin/assets
+    COMMENT "Copying assets directory to build output"
+)
+
 
 add_custom_command(TARGET stalin POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
