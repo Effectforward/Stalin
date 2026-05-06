@@ -1,7 +1,6 @@
 #include <game.hpp>
 #include <raylib.h>
 
-
 int main()
 {
 	Color grey = {29, 29, 27, 255};
@@ -14,6 +13,8 @@ int main()
 	Game game;
 	// game loop
 	while (WindowShouldClose() == false) {
+
+		game.handleInput();
 		// canvas is ready for drawing stuff
 		BeginDrawing();
 		// by defualt background is black, this clears it with our custom color

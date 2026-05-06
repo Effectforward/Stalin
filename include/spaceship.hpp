@@ -13,6 +13,7 @@ class Spaceship
 	void Firelaser();
 
   private:
+	int speed = 7;
 	// for image rendering (it is a data structure)
 	Texture2D image;
 	// for poositioning (it is also a data structure)

@@ -25,3 +25,21 @@ void Spaceship::Draw()
 {
 	DrawTextureV(image, position, WHITE);
 }
+
+void Spaceship::moveLeft()
+{
+	position.x -= speed;
+	// avoids the spaceship escaping the game window
+	if (position.x < 0) {
+		position.x = 0;
+	}
+}
+
+void Spaceship::moveRight()
+{
+	position.x += speed;
+	// avoids the spaceship escaping the game window
+	if (position.x > GetScreenWidth() - image.width) {
+		position.x = GetScreenWidth()- image.width;
+	}
+}
