@@ -35,6 +35,10 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(stalin 
     src/main.cpp
+    include/spaceship.hpp
+    src/spaceship.cpp
+    include/game.hpp
+    src/game.cpp
 )
 
 target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)
