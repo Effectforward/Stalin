@@ -1,11 +1,12 @@
-#include <raylib.h>
 #include <game.hpp>
-#include <stalin.hpp>
+#include <raylib.h>
+
 
 int main()
 {
-	// defines custom color for the background
 	Color grey = {29, 29, 27, 255};
+	const int windowHeight = 750;
+	const int windowWidth = 700;
 	// initializes the window
 	InitWindow(windowWidth, windowHeight, "Stalin");
 	// limits the fps or the game will run at maximum speed

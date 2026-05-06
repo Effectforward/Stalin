@@ -1,6 +1,6 @@
 #include "raylib.h"
 #include <spaceship.hpp>
-#include <stalin.hpp>
+
 // defines the constructor
 Spaceship::Spaceship()
 {
