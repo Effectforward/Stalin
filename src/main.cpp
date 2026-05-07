@@ -20,6 +20,7 @@ int main()
 		// by defualt background is black, this clears it with our custom color
 		ClearBackground(grey);
 		game.Draw();
+		game.updatePosition();
 		// canvas is closed
 		EndDrawing();
 	}

@@ -1,6 +1,8 @@
 #pragma once
 
+#include "laser.hpp"
 #include "raylib.h"
+#include <vector>
 // Spaceship class
 class Spaceship
 {
@@ -11,6 +13,7 @@ class Spaceship
 	void moveLeft();
 	void moveRight();
 	void Firelaser();
+	std::vector<Laser> lasers; // this will hold all the lasers
 
   private:
 	int speed = 7;
@@ -18,4 +21,5 @@ class Spaceship
 	Texture2D image;
 	// for poositioning (it is also a data structure)
 	Vector2 position;
+	double lastFireTime;
 };

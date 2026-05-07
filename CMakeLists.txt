@@ -39,6 +39,8 @@ add_executable(stalin
     src/spaceship.cpp
     include/game.hpp
     src/game.cpp
+    include/laser.hpp
+    src/laser.cpp
 )
 
 target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)

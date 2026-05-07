@@ -13,6 +13,7 @@ Spaceship::Spaceship()
 	centre*/
 	position.x = (GetScreenWidth() - image.width) / 2.0;
 	position.y = GetScreenHeight() - image.height;
+	lastFireTime = 0.0;
 }
 
 Spaceship::~Spaceship()
@@ -40,6 +41,18 @@ void Spaceship::moveRight()
 	position.x += speed;
 	// avoids the spaceship escaping the game window
 	if (position.x > GetScreenWidth() - image.width) {
-		position.x = GetScreenWidth()- image.width;
+		position.x = GetScreenWidth() - image.width;
+	}
+}
+
+void Spaceship::Firelaser()
+{
+	// creates laser beams at the centre
+	// push_back adds an element to the end of a container, in this case a vector
+
+	if (GetTime() - lastFireTime >= 0.35) {
+
+		lasers.push_back(Laser({position.x + (image.width / 2 - 2), position.y}, -6));
+		lastFireTime = GetTime();
 	}
 }
