@@ -16,7 +16,7 @@ class Spaceship
 	std::vector<Laser> lasers; // this will hold all the lasers
 
   private:
-	int speed = 7;
+	int speed = 9;
 	// for image rendering (it is a data structure)
 	Texture2D image;
 	// for poositioning (it is also a data structure)

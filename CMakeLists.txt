@@ -41,6 +41,10 @@ add_executable(stalin
     src/game.cpp
     include/laser.hpp
     src/laser.cpp
+    include/block.hpp
+    src/block.cpp
+    src/obstacle.cpp
+    include/obstacles.hpp
 )
 
 target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)
