@@ -19,6 +19,7 @@ void Game::updatePosition()
 		laser.Draw();
 		laser.update();
 		deleteInactiveLasers();
+		//.size returns the size of the vector
 		std::cout << "Vector Size:" << spaceship.lasers.size() << std::endl;
 	}
 }

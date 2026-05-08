@@ -48,7 +48,7 @@ void Spaceship::moveRight()
 void Spaceship::Firelaser()
 {
 	// creates laser beams at the centre
-	// push_back adds an element to the end of a container, in this case a vector
+	// push_back basically adds an element to the end of a container, in this case a vector
 
 	if (GetTime() - lastFireTime >= 0.35) {
 
