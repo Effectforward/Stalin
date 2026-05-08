@@ -43,6 +43,10 @@ add_executable(stalin
     src/laser.cpp
     include/aliens.hpp      
     src/aliens.cpp    
+    include/block.hpp
+    src/block.cpp
+    src/obstacle.cpp
+    include/obstacles.hpp
 )
 
 target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)

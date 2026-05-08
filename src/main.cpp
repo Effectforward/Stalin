@@ -1,3 +1,4 @@
+#include "obstacles.hpp"
 #include <game.hpp>
 #include <raylib.h>
 
@@ -23,6 +24,7 @@ int main()
 		ClearBackground(grey);
 		game.Draw();
 		game.updatePosition();
+		
 		// canvas is closed
 		EndDrawing();
 	
