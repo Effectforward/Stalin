@@ -41,6 +41,8 @@ add_executable(stalin
     src/game.cpp
     include/laser.hpp
     src/laser.cpp
+    include/aliens.hpp      # ← yeh add karo
+    src/aliens.cpp    
 )
 
 target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)

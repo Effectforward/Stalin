@@ -1,6 +1,7 @@
 #include <game.hpp>
 #include <raylib.h>
 
+
 int main()
 {
 	Color grey = {29, 29, 27, 255};
@@ -11,6 +12,7 @@ int main()
 	// limits the fps or the game will run at maximum speed
 	SetTargetFPS(60);
 	Game game;
+	
 	// game loop
 	while (WindowShouldClose() == false) {
 
@@ -23,6 +25,7 @@ int main()
 		game.updatePosition();
 		// canvas is closed
 		EndDrawing();
+	
 	}
 	// window should be closed after an iniliatization
 	CloseWindow();
