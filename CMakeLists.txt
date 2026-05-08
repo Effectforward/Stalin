@@ -41,7 +41,7 @@ add_executable(stalin
     src/game.cpp
     include/laser.hpp
     src/laser.cpp
-    include/aliens.hpp      # ← yeh add karo
+    include/aliens.hpp      
     src/aliens.cpp    
 )
 
