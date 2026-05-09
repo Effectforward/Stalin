@@ -5,6 +5,7 @@
 #include <obstacles.hpp>
 #include <spaceship.hpp>
 #include <vector>
+
 class Game
 {
   public:
@@ -14,16 +15,19 @@ class Game
 	void updatePosition();
 	void handleInput();
 	void deleteInactiveLasers();
+	
 
   private:
 	Spaceship spaceship;
 	//parameterized constructor
 	
 	void moveAlien();
-
+	void moveAliensDown(int distance);
 	std::vector<Alien> CreateAliens();
+	void alienShootLaser();
 	std::vector<Alien> aliens;
 	int alienDirection;
+	std::vector<Laser> alienLaser;
 	std::vector<Obstacle> createObstacles();
 	// parameterized constructor
 	Laser laser = Laser({100, 100}, -7);
