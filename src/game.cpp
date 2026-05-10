@@ -202,7 +202,8 @@ void Game::alienShootLaser()
 		timeLastAlienShot = GetTime();
 
 		// Randomize the interval for the next shot (between 0.5 and 2.5 seconds)
-		// This makes the alien fire rate unpredictable like the arcade game
+		// This makes the alien fire rate unpredictable like the arcade game, change this to
+		// increase or decrease the fire rate
 		alienShootInterval = GetRandomValue(1, 6) / 10.0;
 
 		// Pick a random alien to shoot
