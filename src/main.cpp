@@ -1,4 +1,3 @@
-#include "obstacles.hpp"
 #include <game.hpp>
 #include <raylib.h>
 

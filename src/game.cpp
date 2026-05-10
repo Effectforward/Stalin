@@ -87,8 +87,12 @@ std::vector<Alien> Game::CreateAliens()
 {
 
 	std::vector<Alien> aliens;
-	for (int row = 0; row < 7; row++) {
-		for (int column = 0; column < 10; column++) {
+	// OLD CODE:
+	// for (int row = 0; row < 7; row++) {
+	// 	for (int column = 0; column < 10; column++) {
+	// NEW CODE: Increase rows to 10 and columns to 15
+	for (int row = 0; row < 10; row++) {
+		for (int column = 0; column < 15; column++) {
 			int alienType;
 			if (row == 0) {
 				alienType = 3;
@@ -100,8 +104,12 @@ std::vector<Alien> Game::CreateAliens()
 				alienType = 1;
 			}
 
-			float x = 75 + column * 55;
-			float y = 110 + row * 55;
+			// OLD CODE:
+			// float x = 75 + column * 55;
+			// float y = 110 + row * 55;
+			// NEW CODE: Decrease spacing from 55 to 35
+			float x = 75 + column * 35;
+			float y = 110 + row * 35;
 			aliens.push_back(Alien(alienType, {x, y}));
 		}
 	}
