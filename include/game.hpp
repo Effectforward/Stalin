@@ -32,4 +32,15 @@ class Game
 	// parameterized constructor
 	Laser laser = Laser({100, 100}, -7);
 	std::vector<Obstacle> obstacles;
+
+    // --- NEW SPACE INVADERS MOVEMENT/SHOOTING VARIABLES ---
+    // timeLastAlienMoved tracks the exact time (in seconds) the alien block last took a step
+    double timeLastAlienMoved;
+    // alienMoveInterval defines how many seconds to wait before taking the next step
+    double alienMoveInterval;
+
+    // timeLastAlienShot tracks the exact time (in seconds) the aliens last fired a laser
+    double timeLastAlienShot;
+    // alienShootInterval defines the randomized wait time (in seconds) before the next shot is fired
+    double alienShootInterval;
 };
