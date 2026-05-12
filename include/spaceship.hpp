@@ -1,19 +1,18 @@
-#pragma once
-
+#include "entity.hpp"
 #include "laser.hpp"
 #include "raylib.h"
 #include <vector>
 // Spaceship class
-class Spaceship {
+class Spaceship : public Entity {
 public:
   Spaceship();
   ~Spaceship();
-  void Draw();
+  void Draw() override;
   void moveLeft();
   void moveRight();
   void Firelaser();
   // we need a rectangle to check collison uisng built in raylib function
-  Rectangle getRect();
+  Rectangle getRect() override;
   void Reset();
   std::vector<Laser> lasers; // this will hold all the lasers
 
@@ -25,9 +24,5 @@ private:
   int speed = 6;
   int laserSpeed = -15;  // Default speed
   int laserDamage = 1;   // Default damage
-  // for image rendering (it is a data structure)
-  Texture2D image;
-  // for positioning (it is also a data structure)
-  Vector2 position;
   double lastFireTime;
 };
