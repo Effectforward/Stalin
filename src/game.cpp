@@ -34,7 +34,16 @@ Game::Game() {
   moveSounds[1] = LoadSound("assets/audio/fastinvader2.wav");
   moveSounds[2] = LoadSound("assets/audio/fastinvader3.wav");
   moveSounds[3] = LoadSound("assets/audio/fastinvader4.wav");
+  ufoLowSound = LoadSound("assets/audio/ufo_lowpitch.wav");
+  ufoHighSound = LoadSound("assets/audio/ufo_highpitch.wav");
   currentMoveSound = 0;
+
+  ufoActive = false;
+  nextUfoSpawnTime = GetTime() + GetRandomValue(10, 20);
+  ufoTexture = LoadTexture("assets/sprites/ufo.png");
+  if (ufoTexture.id == 0) {
+    ufoTexture = LoadTexture("assets/sprites/e1.png"); // Fallback if no ufo.png
+  }
 }
 
 Game::~Game() {
@@ -44,6 +53,9 @@ Game::~Game() {
   for (int i = 0; i < 4; i++) {
     UnloadSound(moveSounds[i]);
   }
+  UnloadSound(ufoLowSound);
+  UnloadSound(ufoHighSound);
+  UnloadTexture(ufoTexture);
 }
 
 void Game::update() {
@@ -82,6 +94,7 @@ void Game::update() {
 
   moveAlien();
   alienShootLaser();
+  updateUfo();
 }
 
 void Game::Draw() {
@@ -101,12 +114,13 @@ void Game::Draw() {
   for (auto &obstacle : obstacles) {
     obstacle.Draw();
   }
+  drawUfo();
 
   // Draw HUD Line
   DrawLineEx({10, float(GetScreenHeight() - 50)},
              {float(GetScreenWidth() - 10), float(GetScreenHeight() - 50)}, 3,
              YELLOW);
-  
+
   DrawText("LIVES:", 10, GetScreenHeight() - 35, 20, YELLOW);
   float startX = 85.0f;
   for (int i = 0; i < lives; i++) {
@@ -349,7 +363,22 @@ void Game::checkForCollisions() {
       }
     }
 
-    // 2. Check collision with Obstacles (Separated from aliens for performance)
+    // 2. Check collision with UFO
+    if (laser.active && ufoActive) {
+      Rectangle ufoRect = {ufoPosition.x, ufoPosition.y,
+                           (float)ufoTexture.width, (float)ufoTexture.height};
+      if (CheckCollisionRecs(ufoRect, laser.getRect())) {
+        ufoActive = false;
+        laser.active = false;
+        score += 100; // Bonus score for UFO
+        if (score > highScore)
+          highScore = score;
+        PlaySound(ufoHighSound);
+        StopSound(ufoLowSound);
+      }
+    }
+
+    // 3. Check collision with Obstacles (Separated from aliens for performance)
     if (laser.active) {
       for (auto &obstacle : obstacles) {
         // Dynamic Damage: The width of the impact depends on the laser's damage
@@ -457,10 +486,46 @@ void Game::Reset() {
   timeLastAlienShot = GetTime();
   alienShootInterval = GetRandomValue(10, 30) / 10.0;
   currentMoveSound = 0;
+  ufoActive = false;
+  nextUfoSpawnTime = GetTime() + GetRandomValue(10, 20);
+  StopSound(ufoLowSound);
 
   // Reset spaceship position and power-ups
   spaceship.Reset();
   spaceship.setLaserSpeed(-15);
   spaceship.setLaserDamage(1);
-  // Note: We might need a Reset method in Spaceship too to center it
+}
+
+void Game::spawnUfo() {
+  ufoActive = true;
+  ufoDirection = (GetRandomValue(0, 1) == 0) ? 1 : -1;
+  if (ufoDirection == 1) {
+    ufoPosition = {-float(ufoTexture.width), 30};
+  } else {
+    ufoPosition = {float(GetScreenWidth()), 30};
+  }
+  nextUfoSpawnTime = GetTime() + GetRandomValue(15, 30);
+  PlaySound(ufoLowSound);
+}
+
+void Game::updateUfo() {
+  if (!ufoActive) {
+    if (GetTime() >= nextUfoSpawnTime) {
+      spawnUfo();
+    }
+    return;
+  }
+
+  ufoPosition.x += ufoDirection * 2.0f;
+
+  if (ufoPosition.x < -ufoTexture.width || ufoPosition.x > GetScreenWidth()) {
+    ufoActive = false;
+    StopSound(ufoLowSound);
+  }
+}
+
+void Game::drawUfo() {
+  if (ufoActive) {
+    DrawTextureV(ufoTexture, ufoPosition, WHITE);
+  }
 }

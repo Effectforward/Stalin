@@ -22,7 +22,7 @@ public:
   void setLaserDamage(int d) { laserDamage = d; }
 
 private:
-  int speed = 9;
+  int speed = 6;
   int laserSpeed = -15;  // Default speed
   int laserDamage = 1;   // Default damage
   // for image rendering (it is a data structure)

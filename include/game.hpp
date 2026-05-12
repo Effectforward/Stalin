@@ -58,5 +58,18 @@ private:
   Sound alienDeathSound;
   Sound moveSounds[4];
   int currentMoveSound;
+  Sound ufoLowSound;
+  Sound ufoHighSound;
+  
+  // UFO state
+  bool ufoActive;
+  Vector2 ufoPosition;
+  int ufoDirection;
+  double nextUfoSpawnTime;
+  Texture2D ufoTexture;
+
+  void spawnUfo();
+  void updateUfo();
+  void drawUfo();
   void gameOver();
 };
