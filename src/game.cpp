@@ -187,6 +187,10 @@ void Game::handleInput() {
     spaceship.moveRight();
   } else if (IsKeyDown(KEY_SPACE)) {
     spaceship.Firelaser();
+
+    if (!IsSoundPlaying(shootSound)) {
+      PlaySound(shootSound);
+    }
   }
 }
 
@@ -275,7 +279,8 @@ void Game::moveAlien() {
     timeLastAlienMoved = GetTime();
 
     // Calculate the new speed interval based on how many aliens are left.
-    // The difficulty-dependent factors prevent aliens from speeding up too fast.
+    // The difficulty-dependent factors prevent aliens from speeding up too
+    // fast.
     float startInterval = 0.5f;
     float endInterval = 0.1f;
 
@@ -305,11 +310,16 @@ void Game::moveAlien() {
     // Linear interpolation based on remaining aliens
     // We assume a full grid size for each difficulty to calculate the ratio
     int maxAliens = 1;
-    if (difficulty == NOVICE) maxAliens = 3 * 6;
-    else if (difficulty == EASY) maxAliens = 4 * 8;
-    else if (difficulty == MEDIUM) maxAliens = 5 * 10;
-    else if (difficulty == HARD) maxAliens = 6 * 12;
-    else if (difficulty == STALIN) maxAliens = 8 * 14;
+    if (difficulty == NOVICE)
+      maxAliens = 3 * 6;
+    else if (difficulty == EASY)
+      maxAliens = 4 * 8;
+    else if (difficulty == MEDIUM)
+      maxAliens = 5 * 10;
+    else if (difficulty == HARD)
+      maxAliens = 6 * 12;
+    else if (difficulty == STALIN)
+      maxAliens = 8 * 14;
 
     float ratio = (float)aliens.size() / (float)maxAliens;
     alienMoveInterval = endInterval + (ratio * (startInterval - endInterval));
@@ -387,10 +397,13 @@ void Game::alienShootLaser() {
     // This makes the alien fire rate unpredictable like the arcade game, change
     // this to increase or decrease the fire rate
     float scale = 1.0f;
-    if (difficulty == EASY) scale = 1.5f;
-    if (difficulty == HARD) scale = 0.7f;
-    if (difficulty == STALIN) scale = 0.3f;
-    
+    if (difficulty == EASY)
+      scale = 1.5f;
+    if (difficulty == HARD)
+      scale = 0.7f;
+    if (difficulty == STALIN)
+      scale = 0.3f;
+
     alienShootInterval = (GetRandomValue(1, 6) / 10.0) * scale;
 
     // Pick a random alien to shoot
@@ -598,7 +611,8 @@ void Game::Reset() {
   timeLastAlienMoved = GetTime();
   timeLastAlienShot = GetTime();
   alienShootInterval = GetRandomValue(10, 30) / 10.0;
-  if (difficulty == STALIN) alienShootInterval = 0.1;
+  if (difficulty == STALIN)
+    alienShootInterval = 0.1;
   currentMoveSound = 0;
   ufoActive = false;
   nextUfoSpawnTime = GetTime() + GetRandomValue(10, 20);
