@@ -5,8 +5,14 @@ int main() {
   Color grey = {29, 29, 27, 255};
   const int windowHeight = 750;
   const int windowWidth = 700;
-  // initializes the window
+
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
+
   InitWindow(windowWidth, windowHeight, "Stalin");
+
+  ToggleFullscreen();
+
+  SetWindowMinSize(700, 750);
   InitAudioDevice(); // Initialize audio
   // limits the fps or the game will run at maximum speed
   SetTargetFPS(60);
