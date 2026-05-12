@@ -9,47 +9,18 @@ Alien::Alien(int type, Vector2 position) {
     // this needs a fix, the images should be resized before adding them to the
     // code, todo: resize aliens using magick
 
-    // OLD CODE:
-    // switch(type){
-    //     case 1:
-    //     alienImages[0] = LoadTexture("assets/sprites/e1.png");
-    //     break;
-    //      case 2:
-    //     alienImages[1] = LoadTexture("assets/sprites/e2.png");
-    //     break;
-    //      case 3:
-    //     alienImages[2] = LoadTexture("assets/sprites/e3i.png");
-    //     break;
-    //    default:
-    //     alienImages[0]= LoadTexture("assets/sprites/e1i.png");
-    //     break;
-    // }
-    // NEW CODE: Load image, resize it by half, and then create texture
-    Image img;
     switch (type) {
     case 1:
-      img = LoadImage("assets/sprites/e1.png");
-      ImageResize(&img, img.width / 2, img.height / 2);
-      alienImages[0] = LoadTextureFromImage(img);
-      UnloadImage(img);
+      alienImages[0] = LoadTexture("assets/sprites/e1.png");
       break;
     case 2:
-      img = LoadImage("assets/sprites/e2.png");
-      ImageResize(&img, img.width / 2, img.height / 2);
-      alienImages[1] = LoadTextureFromImage(img);
-      UnloadImage(img);
+      alienImages[1] = LoadTexture("assets/sprites/e2.png");
       break;
     case 3:
-      img = LoadImage("assets/sprites/e3i.png");
-      ImageResize(&img, img.width / 2, img.height / 2);
-      alienImages[2] = LoadTextureFromImage(img);
-      UnloadImage(img);
+      alienImages[2] = LoadTexture("assets/sprites/e3.png");
       break;
     default:
-      img = LoadImage("assets/sprites/e1i.png");
-      ImageResize(&img, img.width / 2, img.height / 2);
-      alienImages[0] = LoadTextureFromImage(img);
-      UnloadImage(img);
+      alienImages[0] = LoadTexture("assets/sprites/e1.png");
       break;
     }
   }
@@ -77,21 +48,21 @@ Alien::Alien(int type, Vector2 position) {
 }
 
 void Alien::Draw() {
-  Color alienColor = WHITE;
-  if (type == 1)
-    alienColor = {88, 88, 175, 255}; // Purple/Blue
-  else
-    alienColor = YELLOW;
-
-  DrawTextureV(alienImages[type - 1], position, alienColor);
+  int index = type - 1;
+  if (index < 0) index = 0;
+  if (index > 2) index = 2;
+  
+  DrawTextureV(alienImages[index], position, WHITE);
 }
 
 int Alien::GetType() { return type; }
 
 void Alien::unloadImages() {
-  for (int i = 0; i < 4; i++) {
-
-    UnloadTexture(alienImages[i]);
+  for (int i = 0; i < 3; i++) {
+    if (alienImages[i].id != 0) {
+      UnloadTexture(alienImages[i]);
+      alienImages[i].id = 0;
+    }
   }
 }
 

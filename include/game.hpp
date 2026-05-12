@@ -56,5 +56,7 @@ private:
   Sound shootSound;
   Sound explosionSound;
   Sound alienDeathSound;
+  Sound moveSounds[4];
+  int currentMoveSound;
   void gameOver();
 };

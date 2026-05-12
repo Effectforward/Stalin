@@ -30,13 +30,20 @@ Game::Game() {
   shootSound = LoadSound("assets/audio/shoot.wav");
   explosionSound = LoadSound("assets/audio/explosion.wav");
   alienDeathSound = LoadSound("assets/audio/invaderkilled.wav");
+  moveSounds[0] = LoadSound("assets/audio/fastinvader1.wav");
+  moveSounds[1] = LoadSound("assets/audio/fastinvader2.wav");
+  moveSounds[2] = LoadSound("assets/audio/fastinvader3.wav");
+  moveSounds[3] = LoadSound("assets/audio/fastinvader4.wav");
+  currentMoveSound = 0;
 }
 
 Game::~Game() {
-  Alien::unloadImages();
   UnloadSound(shootSound);
   UnloadSound(explosionSound);
   UnloadSound(alienDeathSound);
+  for (int i = 0; i < 4; i++) {
+    UnloadSound(moveSounds[i]);
+  }
 }
 
 void Game::update() {
@@ -95,20 +102,20 @@ void Game::Draw() {
     obstacle.Draw();
   }
 
-  // Draw Lives Visuals
-  DrawLineEx({10, float(GetScreenHeight() - 40)},
-             {float(GetScreenWidth() - 10), float(GetScreenHeight() - 40)}, 3,
+  // Draw HUD Line
+  DrawLineEx({10, float(GetScreenHeight() - 50)},
+             {float(GetScreenWidth() - 10), float(GetScreenHeight() - 50)}, 3,
              YELLOW);
-  DrawText("LIVES:", 10, GetScreenHeight() - 30, 20, YELLOW);
+  
+  DrawText("LIVES:", 10, GetScreenHeight() - 35, 20, YELLOW);
   float startX = 85.0f;
   for (int i = 0; i < lives; i++) {
-    // Draw small rectangles or mini-ships for lives
-    DrawRectangle(startX + i * 30, GetScreenHeight() - 25, 20, 10, YELLOW);
+    DrawRectangle(startX + i * 30, GetScreenHeight() - 30, 20, 10, YELLOW);
   }
 
   // Draw Level
   DrawText(TextFormat("LEVEL %02d", level), GetScreenWidth() - 120,
-           GetScreenHeight() - 30, 20, YELLOW);
+           GetScreenHeight() - 35, 20, YELLOW);
 
   // Draw Scores
   DrawText("SCORE", 50, 20, 20, YELLOW);
@@ -118,9 +125,9 @@ void Game::Draw() {
   DrawText(TextFormat("%05d", highScore), GetScreenWidth() - 150, 45, 20,
            YELLOW);
 
-  // Draw Border
+  // Draw Border (Encompassing the whole game area except HUD)
   DrawRectangleLinesEx(
-      {5, 5, float(GetScreenWidth() - 10), float(GetScreenHeight() - 50)}, 3,
+      {5, 5, float(GetScreenWidth() - 10), float(GetScreenHeight() - 55)}, 3,
       YELLOW);
 
   if (!run) {
@@ -212,8 +219,11 @@ void Game::moveAlien() {
     // add a base 0.05 so they don't go infinitely fast.
     alienMoveInterval = (aliens.size() * 0.003) + 0.05;
 
+    // Play movement sound
+    PlaySound(moveSounds[currentMoveSound]);
+    currentMoveSound = (currentMoveSound + 1) % 4;
+
     // Move all aliens horizontally by a "step" (e.g., 15 pixels)
-    // alienDirection is still 1 (right) or -1 (left)
     int stepSize = 15;
     for (auto &alien : aliens) {
       alien.Update(alienDirection * stepSize);
@@ -265,7 +275,7 @@ std::vector<Obstacle> Game::createObstacles() {
   std::vector<Obstacle> obsVector;
   for (int i = 0; i < obstacleCount; i++) {
     float offsetX = gap + i * (obstacleWidth + gap);
-    float posY = float(GetScreenHeight() - 100);
+    float posY = float(GetScreenHeight() - 150);
     obsVector.push_back(Obstacle({offsetX, posY}));
   }
   return obsVector;
@@ -373,6 +383,7 @@ void Game::checkForCollisions() {
         CheckCollisionRecs(laser.getRect(), spaceship.getRect())) {
       laser.active = false;
       lives--; // decreases total lives by 1
+      PlaySound(explosionSound);
       if (lives <= 0) {
         gameOver();
       }
@@ -418,6 +429,7 @@ void Game::checkForCollisions() {
 
     // 6. Alien vs Spaceship (Direct contact is fatal)
     if (CheckCollisionRecs(alien.getRect(), spaceship.getRect())) {
+      PlaySound(explosionSound);
       gameOver();
     }
   }
@@ -444,6 +456,7 @@ void Game::Reset() {
   alienMoveInterval = 0.5;
   timeLastAlienShot = GetTime();
   alienShootInterval = GetRandomValue(10, 30) / 10.0;
+  currentMoveSound = 0;
 
   // Reset spaceship position and power-ups
   spaceship.Reset();

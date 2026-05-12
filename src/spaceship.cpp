@@ -11,7 +11,7 @@ Spaceship::Spaceship() {
   from top to left: When the image is drawn it is not drawn from the centre but
   instead from left most pixel, so the left most pixel becomes the centre*/
   position.x = (GetScreenWidth() - image.width) / 2.0;
-  position.y = GetScreenHeight() - image.height;
+  position.y = GetScreenHeight() - image.height - 55;
   lastFireTime = 0.0;
   laserSpeed = -15;
   laserDamage = 1;
@@ -61,6 +61,6 @@ Rectangle Spaceship::getRect() {
 
 void Spaceship::Reset() {
   position.x = (GetScreenWidth() - image.width) / 2.0;
-  position.y = GetScreenHeight() - image.height;
+  position.y = GetScreenHeight() - image.height - 55;
   lasers.clear();
 }
