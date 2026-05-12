@@ -7,6 +7,7 @@ int main() {
   const int windowWidth = 700;
   // initializes the window
   InitWindow(windowWidth, windowHeight, "Stalin");
+  InitAudioDevice(); // Initialize audio
   // limits the fps or the game will run at maximum speed
   SetTargetFPS(60);
   Game game;
@@ -26,6 +27,7 @@ int main() {
     EndDrawing();
   }
   // window should be closed after an iniliatization
+  CloseAudioDevice();
   CloseWindow();
 
   return 0;

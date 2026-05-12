@@ -5,8 +5,7 @@
 #include "raylib.h"
 
 #include <game.hpp>
-#include <iostream>
-#include <ostream>
+
 #include <vector>
 Game::Game() {
   aliens = CreateAliens();
@@ -22,14 +21,28 @@ Game::Game() {
   timeLastAlienShot = GetTime();
   // Randomize the first shot between 1.0 and 3.0 seconds
   alienShootInterval = GetRandomValue(10, 30) / 10.0;
+  lives = 3;
+  score = 0;
+  highScore = 0;
+  level = 1;
+
+  // Load Audio
+  shootSound = LoadSound("assets/audio/shoot.wav");
+  explosionSound = LoadSound("assets/audio/explosion.wav");
+  alienDeathSound = LoadSound("assets/audio/invaderkilled.wav");
 }
 
 Game::~Game() {
-  Alien ::unloadImages();
-  alienDirection = 1;
+  Alien::unloadImages();
+  UnloadSound(shootSound);
+  UnloadSound(explosionSound);
+  UnloadSound(alienDeathSound);
 }
 
 void Game::update() {
+  if (!run)
+    return; // Stop updates if game is over
+
   for (auto &laser : spaceship.lasers) {
     laser.update();
   }
@@ -40,6 +53,25 @@ void Game::update() {
 
   checkForCollisions();
   deleteInactiveLasers();
+
+  // POWER-UP LOGIC: Check if aliens are low
+  float maxY = 0;
+  for (const auto &alien : aliens) {
+    if (alien.position.y > maxY)
+      maxY = alien.position.y;
+  }
+
+  // If aliens cross 70% of the screen, boost the player's lasers
+  if (maxY > GetScreenHeight() * 0.7f) {
+    spaceship.setLaserSpeed(-25); // Faster lasers
+    spaceship.setLaserDamage(3);  // Triple damage
+  }
+
+  // If fewer than 10 aliens remain, go to hyper-speed
+  if (aliens.size() < 25 && !aliens.empty()) {
+    spaceship.setLaserSpeed(-40); // Hyper lasers
+    spaceship.setLaserDamage(10); // Ultimate damage
+  }
 
   moveAlien();
   alienShootLaser();
@@ -62,9 +94,51 @@ void Game::Draw() {
   for (auto &obstacle : obstacles) {
     obstacle.Draw();
   }
+
+  // Draw Lives Visuals
+  DrawLineEx({10, float(GetScreenHeight() - 40)},
+             {float(GetScreenWidth() - 10), float(GetScreenHeight() - 40)}, 3,
+             YELLOW);
+  DrawText("LIVES:", 10, GetScreenHeight() - 30, 20, YELLOW);
+  float startX = 85.0f;
+  for (int i = 0; i < lives; i++) {
+    // Draw small rectangles or mini-ships for lives
+    DrawRectangle(startX + i * 30, GetScreenHeight() - 25, 20, 10, YELLOW);
+  }
+
+  // Draw Level
+  DrawText(TextFormat("LEVEL %02d", level), GetScreenWidth() - 120,
+           GetScreenHeight() - 30, 20, YELLOW);
+
+  // Draw Scores
+  DrawText("SCORE", 50, 20, 20, YELLOW);
+  DrawText(TextFormat("%05d", score), 50, 45, 20, YELLOW);
+
+  DrawText("HI-SCORE", GetScreenWidth() - 150, 20, 20, YELLOW);
+  DrawText(TextFormat("%05d", highScore), GetScreenWidth() - 150, 45, 20,
+           YELLOW);
+
+  // Draw Border
+  DrawRectangleLinesEx(
+      {5, 5, float(GetScreenWidth() - 10), float(GetScreenHeight() - 50)}, 3,
+      YELLOW);
+
+  if (!run) {
+    DrawText("GAME OVER", GetScreenWidth() / 2 - 100,
+             GetScreenHeight() / 2 - 50, 40, RED);
+    DrawText("Press SPACE to Play Again", GetScreenWidth() / 2 - 130,
+             GetScreenHeight() / 2 + 10, 20, WHITE);
+  }
 }
 
 void Game::handleInput() {
+  if (!run) {
+    if (IsKeyDown(KEY_SPACE)) {
+      Reset();
+    }
+    return;
+  }
+
   if (IsKeyDown(KEY_LEFT)) {
     spaceship.moveLeft();
   } else if (IsKeyDown(KEY_RIGHT)) {
@@ -75,11 +149,23 @@ void Game::handleInput() {
 }
 
 void Game::deleteInactiveLasers() {
-  for (auto it = spaceship.lasers.begin(); it != spaceship.lasers.end();)
+  // Cleanup player lasers
+  for (auto it = spaceship.lasers.begin(); it != spaceship.lasers.end();) {
     if (!it->active) {
       it = spaceship.lasers.erase(it);
-    } else
+    } else {
       ++it;
+    }
+  }
+
+  // Cleanup alien lasers
+  for (auto it = alienLaser.begin(); it != alienLaser.end();) {
+    if (!it->active) {
+      it = alienLaser.erase(it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 std::vector<Alien> Game::CreateAliens() {
@@ -203,10 +289,16 @@ void Game::alienShootLaser() {
 
     // Fire laser from the center bottom of that alien, passing the alien's
     // damage stat
-    alienLaser.push_back(Laser(
-        {alien.position.x + alien.alienImages[alien.type - 1].width / 2.0f,
-         alien.position.y + alien.alienImages[alien.type - 1].height},
-        6, alien.damage));
+    int typeIdx = alien.type - 1;
+    if (typeIdx < 0)
+      typeIdx = 0;
+    if (typeIdx > 2)
+      typeIdx = 2;
+
+    alienLaser.push_back(
+        Laser({alien.position.x + Alien::alienImages[typeIdx].width / 2.0f,
+               alien.position.y + Alien::alienImages[typeIdx].height},
+              6, alien.damage));
   }
 }
 
@@ -223,6 +315,19 @@ void Game::checkForCollisions() {
 
         // If HP reaches 0, the alien is defeated and removed from the list
         if (alienIt->hp <= 0) {
+          // Add score based on type
+          if (alienIt->type == 3)
+            score += 30;
+          else if (alienIt->type == 2)
+            score += 20;
+          else
+            score += 10;
+
+          // Update High Score
+          if (score > highScore)
+            highScore = score;
+
+          PlaySound(alienDeathSound);
           alienIt = aliens.erase(alienIt);
         } else {
           // If still alive, move to the next alien in the list
@@ -262,10 +367,15 @@ void Game::checkForCollisions() {
   // --- ALIEN LASER COLLISIONS ---
   for (auto &laser : alienLaser) {
     // 3. Check collision with the Spaceship (The Player)
-    if (CheckCollisionRecs(laser.getRect(), spaceship.getRect())) {
+    // BUG FIX: Added laser.active check to prevent multiple hits from the same
+    // laser
+    if (laser.active &&
+        CheckCollisionRecs(laser.getRect(), spaceship.getRect())) {
       laser.active = false;
-      std::cout << "Spaceship Hit!" << std::endl;
-      // TODO: Implement life loss or game over logic here
+      lives--; // decreases total lives by 1
+      if (lives <= 0) {
+        gameOver();
+      }
     }
 
     // 4. Check collision with Obstacles (Aliens can also damage shields)
@@ -308,8 +418,36 @@ void Game::checkForCollisions() {
 
     // 6. Alien vs Spaceship (Direct contact is fatal)
     if (CheckCollisionRecs(alien.getRect(), spaceship.getRect())) {
-      std::cout << "ALIENT CONTACT! Game Over" << std::endl;
-      // TODO: Trigger game over state
+      gameOver();
     }
   }
+}
+
+void Game::gameOver() { run = false; }
+
+void Game::Reset() {
+  // Clear all vectors
+  aliens.clear();
+  alienLaser.clear();
+  spaceship.lasers.clear();
+  obstacles.clear();
+
+  // Re-initialize
+  aliens = CreateAliens();
+  obstacles = createObstacles();
+  lives = 3;
+  score = 0;
+  level = 1;
+  run = true;
+  alienDirection = 1;
+  timeLastAlienMoved = GetTime();
+  alienMoveInterval = 0.5;
+  timeLastAlienShot = GetTime();
+  alienShootInterval = GetRandomValue(10, 30) / 10.0;
+
+  // Reset spaceship position and power-ups
+  spaceship.Reset();
+  spaceship.setLaserSpeed(-15);
+  spaceship.setLaserDamage(1);
+  // Note: We might need a Reset method in Spaceship too to center it
 }

@@ -76,7 +76,15 @@ Alien::Alien(int type, Vector2 position) {
   }
 }
 
-void Alien::Draw() { DrawTextureV(alienImages[type - 1], position, WHITE); }
+void Alien::Draw() {
+  Color alienColor = WHITE;
+  if (type == 1)
+    alienColor = {88, 88, 175, 255}; // Purple/Blue
+  else
+    alienColor = YELLOW;
+
+  DrawTextureV(alienImages[type - 1], position, alienColor);
+}
 
 int Alien::GetType() { return type; }
 

@@ -13,6 +13,8 @@ Spaceship::Spaceship() {
   position.x = (GetScreenWidth() - image.width) / 2.0;
   position.y = GetScreenHeight() - image.height;
   lastFireTime = 0.0;
+  laserSpeed = -15;
+  laserDamage = 1;
 }
 
 Spaceship::~Spaceship() {
@@ -46,7 +48,8 @@ void Spaceship::Firelaser() {
   if (GetTime() - lastFireTime >= 0.35) {
 
     lasers.push_back(
-        Laser({position.x + (image.width / 2 - 2), position.y}, -15));
+        Laser({position.x + (float(image.width) / 2.0f - 2.0f), position.y},
+              laserSpeed, laserDamage));
     lastFireTime = GetTime();
   }
 }
@@ -54,4 +57,10 @@ void Spaceship::Firelaser() {
 Rectangle Spaceship::getRect() {
   // a rectangle that is positoned on the poosition of the sopaceship
   return {position.x, position.y, float(image.width), float(image.height)};
+}
+
+void Spaceship::Reset() {
+  position.x = (GetScreenWidth() - image.width) / 2.0;
+  position.y = GetScreenHeight() - image.height;
+  lasers.clear();
 }

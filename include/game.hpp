@@ -16,6 +16,8 @@ public:
   void handleInput();
   void deleteInactiveLasers();
   void checkForCollisions();
+  void Reset();
+  bool run = true; // game running state
 
 private:
   Spaceship spaceship;
@@ -47,4 +49,12 @@ private:
   // alienShootInterval defines the randomized wait time (in seconds) before the
   // next shot is fired
   double alienShootInterval;
+  int lives; // lives of spaceship
+  int score;
+  int highScore;
+  int level;
+  Sound shootSound;
+  Sound explosionSound;
+  Sound alienDeathSound;
+  void gameOver();
 };
