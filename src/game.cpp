@@ -25,6 +25,8 @@ Game::Game() {
   score = 0;
   highScore = 0;
   level = 1;
+  state = MENU;
+  difficulty = MEDIUM;
 
   // Load Audio
   shootSound = LoadSound("assets/audio/shoot.wav");
@@ -59,8 +61,8 @@ Game::~Game() {
 }
 
 void Game::update() {
-  if (!run)
-    return; // Stop updates if game is over
+  if (state != PLAYING)
+    return;
 
   for (auto &laser : spaceship.lasers) {
     laser.update();
@@ -95,9 +97,14 @@ void Game::update() {
   moveAlien();
   alienShootLaser();
   updateUfo();
+  checkLevelCompletion();
 }
 
 void Game::Draw() {
+  if (state == MENU) {
+    drawMenu();
+    return;
+  }
   spaceship.Draw();
   for (auto &laser : spaceship.lasers) {
     laser.Draw();
@@ -127,8 +134,18 @@ void Game::Draw() {
     DrawRectangle(startX + i * 30, GetScreenHeight() - 30, 20, 10, YELLOW);
   }
 
-  // Draw Level
-  DrawText(TextFormat("LEVEL %02d", level), GetScreenWidth() - 120,
+  // Draw Level and Difficulty
+  const char *diffText = "MED";
+  if (difficulty == NOVICE)
+    diffText = "NOV";
+  else if (difficulty == EASY)
+    diffText = "EASY";
+  else if (difficulty == HARD)
+    diffText = "HARD";
+  else if (difficulty == STALIN)
+    diffText = "STALIN";
+
+  DrawText(TextFormat("%s LVL %02d", diffText, level), GetScreenWidth() - 170,
            GetScreenHeight() - 35, 20, YELLOW);
 
   // Draw Scores
@@ -144,18 +161,22 @@ void Game::Draw() {
       {5, 5, float(GetScreenWidth() - 10), float(GetScreenHeight() - 55)}, 3,
       YELLOW);
 
-  if (!run) {
+  if (state == GAME_OVER) {
     DrawText("GAME OVER", GetScreenWidth() / 2 - 100,
              GetScreenHeight() / 2 - 50, 40, RED);
-    DrawText("Press SPACE to Play Again", GetScreenWidth() / 2 - 130,
+    DrawText("Press SPACE to return to Menu", GetScreenWidth() / 2 - 140,
              GetScreenHeight() / 2 + 10, 20, WHITE);
   }
 }
 
 void Game::handleInput() {
-  if (!run) {
+  if (state == MENU) {
+    handleMenuInput();
+    return;
+  }
+  if (state == GAME_OVER) {
     if (IsKeyDown(KEY_SPACE)) {
-      Reset();
+      state = MENU;
     }
     return;
   }
@@ -196,8 +217,34 @@ std::vector<Alien> Game::CreateAliens() {
   // for (int row = 0; row < 7; row++) {
   // 	for (int column = 0; column < 10; column++) {
   // NEW CODE: Increase rows to 10 and columns to 15
-  for (int row = 0; row < 10; row++) {
-    for (int column = 0; column < 15; column++) {
+  int rows = 5;
+  int cols = 11;
+
+  switch (difficulty) {
+  case NOVICE:
+    rows = 3;
+    cols = 6;
+    break;
+  case EASY:
+    rows = 4;
+    cols = 8;
+    break;
+  case MEDIUM:
+    rows = 5;
+    cols = 10;
+    break;
+  case HARD:
+    rows = 6;
+    cols = 12;
+    break;
+  case STALIN:
+    rows = 8;
+    cols = 14;
+    break;
+  }
+
+  for (int row = 0; row < rows; row++) {
+    for (int column = 0; column < cols; column++) {
       int alienType;
       if (row == 0) {
         alienType = 3;
@@ -228,10 +275,44 @@ void Game::moveAlien() {
     timeLastAlienMoved = GetTime();
 
     // Calculate the new speed interval based on how many aliens are left.
-    // As aliens are destroyed, size decreases, so the interval becomes smaller
-    // (faster!). E.g., 150 aliens * 0.003 = 0.45s. 1 alien * 0.003 = 0.003s. We
-    // add a base 0.05 so they don't go infinitely fast.
-    alienMoveInterval = (aliens.size() * 0.003) + 0.05;
+    // The difficulty-dependent factors prevent aliens from speeding up too fast.
+    float startInterval = 0.5f;
+    float endInterval = 0.1f;
+
+    switch (difficulty) {
+    case NOVICE:
+      startInterval = 1.0f;
+      endInterval = 0.6f;
+      break;
+    case EASY:
+      startInterval = 0.8f;
+      endInterval = 0.4f;
+      break;
+    case MEDIUM:
+      startInterval = 0.6f;
+      endInterval = 0.2f;
+      break;
+    case HARD:
+      startInterval = 0.4f;
+      endInterval = 0.1f;
+      break;
+    case STALIN:
+      startInterval = 0.2f;
+      endInterval = 0.06f;
+      break;
+    }
+
+    // Linear interpolation based on remaining aliens
+    // We assume a full grid size for each difficulty to calculate the ratio
+    int maxAliens = 1;
+    if (difficulty == NOVICE) maxAliens = 3 * 6;
+    else if (difficulty == EASY) maxAliens = 4 * 8;
+    else if (difficulty == MEDIUM) maxAliens = 5 * 10;
+    else if (difficulty == HARD) maxAliens = 6 * 12;
+    else if (difficulty == STALIN) maxAliens = 8 * 14;
+
+    float ratio = (float)aliens.size() / (float)maxAliens;
+    alienMoveInterval = endInterval + (ratio * (startInterval - endInterval));
 
     // Play movement sound
     PlaySound(moveSounds[currentMoveSound]);
@@ -305,7 +386,12 @@ void Game::alienShootLaser() {
     // Randomize the interval for the next shot (between 0.5 and 2.5 seconds)
     // This makes the alien fire rate unpredictable like the arcade game, change
     // this to increase or decrease the fire rate
-    alienShootInterval = GetRandomValue(1, 6) / 10.0;
+    float scale = 1.0f;
+    if (difficulty == EASY) scale = 1.5f;
+    if (difficulty == HARD) scale = 0.7f;
+    if (difficulty == STALIN) scale = 0.3f;
+    
+    alienShootInterval = (GetRandomValue(1, 6) / 10.0) * scale;
 
     // Pick a random alien to shoot
     int randomIndex = GetRandomValue(0, aliens.size() - 1);
@@ -464,7 +550,7 @@ void Game::checkForCollisions() {
   }
 }
 
-void Game::gameOver() { run = false; }
+void Game::gameOver() { state = GAME_OVER; }
 
 void Game::Reset() {
   // Clear all vectors
@@ -479,12 +565,40 @@ void Game::Reset() {
   lives = 3;
   score = 0;
   level = 1;
-  run = true;
   alienDirection = 1;
+  // Re-initialize parameters based on difficulty
+  switch (difficulty) {
+  case NOVICE:
+    alienMoveInterval = 0.8;
+    spaceship.setLaserSpeed(-15);
+    lives = 10; // Maximum lives for Novice
+    break;
+  case EASY:
+    alienMoveInterval = 1.2;
+    spaceship.setLaserSpeed(-15);
+    lives = 5; // More lives for Easy
+    break;
+  case MEDIUM:
+    alienMoveInterval = 0.7;
+    spaceship.setLaserSpeed(-20);
+    lives = 3;
+    break;
+  case HARD:
+    alienMoveInterval = 0.4;
+    spaceship.setLaserSpeed(-25);
+    lives = 3;
+    break;
+  case STALIN:
+    alienMoveInterval = 0.2;
+    spaceship.setLaserSpeed(-35);
+    lives = 3; // Given more lives to make it playable
+    break;
+  }
+
   timeLastAlienMoved = GetTime();
-  alienMoveInterval = 0.5;
   timeLastAlienShot = GetTime();
   alienShootInterval = GetRandomValue(10, 30) / 10.0;
+  if (difficulty == STALIN) alienShootInterval = 0.1;
   currentMoveSound = 0;
   ufoActive = false;
   nextUfoSpawnTime = GetTime() + GetRandomValue(10, 20);
@@ -528,4 +642,60 @@ void Game::drawUfo() {
   if (ufoActive) {
     DrawTextureV(ufoTexture, ufoPosition, WHITE);
   }
+}
+
+void Game::drawMenu() {
+  DrawText("STALIN INVADERS", GetScreenWidth() / 2 - 180, 150, 40, YELLOW);
+  DrawText("SELECT DIFFICULTY:", GetScreenWidth() / 2 - 120, 250, 20, WHITE);
+  DrawText("[1] NOVICE", GetScreenWidth() / 2 - 60, 300, 20, BLUE);
+  DrawText("[2] EASY", GetScreenWidth() / 2 - 60, 340, 20, GREEN);
+  DrawText("[3] MEDIUM", GetScreenWidth() / 2 - 60, 380, 20, YELLOW);
+  DrawText("[4] HARD", GetScreenWidth() / 2 - 60, 420, 20, ORANGE);
+  DrawText("[5] STALIN", GetScreenWidth() / 2 - 60, 460, 20, RED);
+}
+
+void Game::handleMenuInput() {
+  if (IsKeyPressed(KEY_ONE)) {
+    difficulty = NOVICE;
+    Reset();
+    state = PLAYING;
+  } else if (IsKeyPressed(KEY_TWO)) {
+    difficulty = EASY;
+    Reset();
+    state = PLAYING;
+  } else if (IsKeyPressed(KEY_THREE)) {
+    difficulty = MEDIUM;
+    Reset();
+    state = PLAYING;
+  } else if (IsKeyPressed(KEY_FOUR)) {
+    difficulty = HARD;
+    Reset();
+    state = PLAYING;
+  } else if (IsKeyPressed(KEY_FIVE)) {
+    difficulty = STALIN;
+    Reset();
+    state = PLAYING;
+  }
+}
+
+void Game::checkLevelCompletion() {
+  if (aliens.empty()) {
+    nextLevel();
+  }
+}
+
+void Game::nextLevel() {
+  level++;
+  aliens = CreateAliens();
+  obstacles = createObstacles();
+  alienLaser.clear();
+  spaceship.lasers.clear();
+  ufoActive = false;
+  alienDirection = 1;
+  StopSound(ufoLowSound);
+
+  // Increase speed slightly based on level
+  alienMoveInterval *= 0.9;
+  if (alienMoveInterval < 0.1)
+    alienMoveInterval = 0.1;
 }

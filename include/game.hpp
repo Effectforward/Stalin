@@ -7,6 +7,9 @@
 #include <spaceship.hpp>
 #include <vector>
 
+enum GameState { MENU, PLAYING, GAME_OVER };
+enum Difficulty { NOVICE, EASY, MEDIUM, HARD, STALIN };
+
 class Game {
 public:
   Game();
@@ -17,7 +20,10 @@ public:
   void deleteInactiveLasers();
   void checkForCollisions();
   void Reset();
+  void nextLevel();
   bool run = true; // game running state
+  GameState state;
+  Difficulty difficulty;
 
 private:
   Spaceship spaceship;
@@ -71,5 +77,8 @@ private:
   void spawnUfo();
   void updateUfo();
   void drawUfo();
+  void drawMenu();
+  void handleMenuInput();
+  void checkLevelCompletion();
   void gameOver();
 };
