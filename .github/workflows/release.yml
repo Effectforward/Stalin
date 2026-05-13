@@ -54,6 +54,11 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel
 
+      - name: Find MinGW DLLs
+        if: runner.os == 'Windows'
+        run: where libgcc_s_seh-1.dll
+        shell: cmd
+
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
@@ -64,10 +69,15 @@ jobs:
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
           mkdir stalin-package
           copy build\bin\${{ matrix.binary_name }} stalin-package\
           xcopy assets stalin-package\assets\ /E /I
+          $mingwBin = "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
+          copy "$mingwBin\libgcc_s_seh-1.dll" stalin-package\
+          copy "$mingwBin\libstdc++-6.dll" stalin-package\
+          copy "$mingwBin\libwinpthread-1.dll" stalin-package\
           Compress-Archive -Path stalin-package\* -DestinationPath ${{ matrix.artifact_name }}.zip
 
       - name: Upload build artifact
@@ -76,7 +86,7 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.zip
 
- release:
+  release:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
