@@ -29,33 +29,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Install Linux system dependencies (required by raylib/GLFW) ──
+      # ── Install Linux dependencies ───────────────────────
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          # Retry up to 3 times to handle transient network issues
           for i in {1..3}; do
             sudo apt-get install -y --no-install-recommends \
-              libx11-dev \
-              libxcursor-dev \
-              libxrandr-dev \
-              libxinerama-dev \
-              libxi-dev \
-              libxext-dev \
-              libxfixes-dev \
-              libwayland-dev \
-              libxkbcommon-dev \
-              libgl1-mesa-dev && break || sleep 10
+              libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev \
+              libxi-dev libxext-dev libxfixes-dev libwayland-dev \
+              libxkbcommon-dev libgl1-mesa-dev && break || sleep 10
           done
 
-      - name: Configure CMake
+      # ── Clean any stale build directory ──────────────────
+      - name: Clean build directory
+        run: rm -rf build
+        shell: bash
+
+      # ── Configure CMake (Windows) ────────────────────────
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/W4 /WX-"
+
+      # ── Configure CMake (Linux / macOS) ──────────────────
+      - name: Configure CMake (Linux / macOS)
+        if: runner.os != 'Windows'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
+      # ── Build ────────────────────────────────────────────
       - name: Build
-        # --parallel without a number automatically uses all available cores
         run: cmake --build build --config Release --parallel
 
+      # ── Package (Linux / macOS) ──────────────────────────
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
@@ -64,6 +70,7 @@ jobs:
           cp -r assets stalin-package/
           zip -r ${{ matrix.artifact_name }}.zip stalin-package
 
+      # ── Package (Windows) ────────────────────────────────
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -72,6 +79,7 @@ jobs:
           xcopy assets stalin-package\assets\ /E /I
           Compress-Archive -Path stalin-package\* -DestinationPath ${{ matrix.artifact_name }}.zip
 
+      # ── Upload artifact ──────────────────────────────────
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
