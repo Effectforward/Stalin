@@ -3,11 +3,10 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*'               # Triggers only on version tags, e.g., v1.0.0
-  workflow_dispatch:        # Allows manual run from the Actions tab
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
-  # ── Build matrix for all three platforms ─────────────────
   build:
     strategy:
       matrix:
@@ -29,7 +28,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ── Install Linux dependencies ───────────────────────
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -41,27 +39,18 @@ jobs:
               libxkbcommon-dev libgl1-mesa-dev && break || sleep 10
           done
 
-      # ── Clean any stale build directory ──────────────────
+      # Clean any leftover build directory from previous runs
       - name: Clean build directory
         run: rm -rf build
         shell: bash
 
-      # ── Configure CMake (Windows) ────────────────────────
-      - name: Configure CMake (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="/W4 /WX-"
-
-      # ── Configure CMake (Linux / macOS) ──────────────────
-      - name: Configure CMake (Linux / macOS)
-        if: runner.os != 'Windows'
+      # Single configure step – no special flags needed
+      - name: Configure CMake
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
-      # ── Build ────────────────────────────────────────────
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      # ── Package (Linux / macOS) ──────────────────────────
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
@@ -70,7 +59,6 @@ jobs:
           cp -r assets stalin-package/
           zip -r ${{ matrix.artifact_name }}.zip stalin-package
 
-      # ── Package (Windows) ────────────────────────────────
       - name: Package (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -79,14 +67,12 @@ jobs:
           xcopy assets stalin-package\assets\ /E /I
           Compress-Archive -Path stalin-package\* -DestinationPath ${{ matrix.artifact_name }}.zip
 
-      # ── Upload artifact ──────────────────────────────────
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}.zip
 
-  # ── Create the GitHub Release and attach all artifacts ──
   release:
     needs: build
     runs-on: ubuntu-latest
