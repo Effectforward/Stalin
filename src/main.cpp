@@ -6,7 +6,7 @@ int main() {
   const int windowHeight = 750;
   const int windowWidth = 700;
 
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_MAXIMIZED);
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE );
 
   InitWindow(windowWidth, windowHeight, "Stalin");
 
