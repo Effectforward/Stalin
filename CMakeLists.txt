@@ -54,6 +54,12 @@ target_include_directories(stalin PRIVATE ${CMAKE_SOURCE_DIR}/include)
 find_package(Threads REQUIRED)
 
 target_link_libraries(stalin PRIVATE raylib Threads::Threads)
+add_custom_command(TARGET stalin POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        ${CMAKE_BINARY_DIR}/bin/assets
+    COMMENT "Copying assets directory to build output"
+)
 
 if(NOT MSVC)
     add_custom_command(TARGET stalin POST_BUILD
@@ -63,13 +69,6 @@ if(NOT MSVC)
         COMMENT "Syncing compile_commands.json for clangd"
     )
 endif()
-
-add_custom_command(TARGET stalin POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/assets
-    ${CMAKE_BINARY_DIR}/bin/assets
-    COMMENT "Copying assets directory to build output"
-)
 
 
 add_custom_command(TARGET stalin POST_BUILD
