@@ -54,11 +54,6 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel
 
-      - name: Find MinGW DLLs
-        if: runner.os == 'Windows'
-        run: where libgcc_s_seh-1.dll
-        shell: cmd
-
       - name: Package (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
@@ -72,12 +67,12 @@ jobs:
         shell: pwsh
         run: |
           mkdir stalin-package
-          copy build\bin\${{ matrix.binary_name }} stalin-package\
+          Copy-Item build\bin\${{ matrix.binary_name }} stalin-package\
           xcopy assets stalin-package\assets\ /E /I
-          $mingwBin = "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
-          copy "$mingwBin\libgcc_s_seh-1.dll" stalin-package\
-          copy "$mingwBin\libstdc++-6.dll" stalin-package\
-          copy "$mingwBin\libwinpthread-1.dll" stalin-package\
+          $mingwBin = "C:\mingw64\bin"
+          Copy-Item "$mingwBin\libgcc_s_seh-1.dll" stalin-package\
+          Copy-Item "$mingwBin\libstdc++-6.dll" stalin-package\
+          Copy-Item "$mingwBin\libwinpthread-1.dll" stalin-package\
           Compress-Archive -Path stalin-package\* -DestinationPath ${{ matrix.artifact_name }}.zip
 
       - name: Upload build artifact
