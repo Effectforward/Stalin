@@ -1,11 +1,9 @@
 name: Build and Release
-
 on:
   push:
     tags:
       - 'v*'
   workflow_dispatch:
-
 jobs:
   build:
     strategy:
@@ -21,9 +19,7 @@ jobs:
           - os: macos-latest
             artifact_name: stalin-macos
             binary_name: stalin
-
     runs-on: ${{ matrix.os }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,13 +35,20 @@ jobs:
               libxkbcommon-dev libgl1-mesa-dev && break || sleep 10
           done
 
-      # Clean any leftover build directory from previous runs
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja
+
       - name: Clean build directory
         run: rm -rf build
         shell: bash
 
-      # Single configure step – no special flags needed
-      - name: Configure CMake
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -G "Ninja"
+
+      - name: Configure CMake (Linux/macOS)
+        if: runner.os != 'Windows'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
