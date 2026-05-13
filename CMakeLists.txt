@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.31.10)
+cmake_minimum_required(VERSION 3.31.6)
 project(Stalin)
 
 if(NOT CMAKE_BUILD_TYPE)
