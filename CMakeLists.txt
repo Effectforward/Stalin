@@ -56,7 +56,7 @@ find_package(Threads REQUIRED)
 target_link_libraries(stalin PRIVATE raylib Threads::Threads)
 
 if(MSVC)
-    target_compile_options(stalin PRIVATE )
+    target_compile_options(stalin PRIVATE /W4)
 else()
     target_compile_options(stalin PRIVATE -Wall -Wextra -Werror -pedantic)
 endif()
