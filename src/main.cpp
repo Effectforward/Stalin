@@ -20,7 +20,7 @@ int main() {
   Game game;
 
   // game loop
-  while (WindowShouldClose() == false) {
+  while (!WindowShouldClose() && !game.shouldQuit) {
 
     game.handleInput();
     // canvas is ready for drawing stuff

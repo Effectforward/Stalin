@@ -231,32 +231,35 @@ void Game::handleInput() {
     state = PAUSED;
     return;
   }
-
-  if (state == PAUSED) {
+if (state == PAUSED) {
     if (IsKeyPressed(KEY_ESCAPE)) {
       state = PLAYING;
       return;
-    } // ESC again = resume
-
+    }
+ 
     if (IsKeyPressed(KEY_UP))
-      pauseSelected = (pauseSelected - 1 + 2) % 2;
+      pauseSelected = (pauseSelected - 1 + 3) % 3;
     if (IsKeyPressed(KEY_DOWN))
-      pauseSelected = (pauseSelected + 1) % 2;
-
+      pauseSelected = (pauseSelected + 1) % 3;
+ 
     if (IsKeyPressed(KEY_ENTER)) {
       if (pauseSelected == 0) {
         state = PLAYING; // Resume
-      } else {
+      } else if (pauseSelected == 1) {
         state = MENU; // Main menu
+        pauseSelected = 0; 
         aliens.clear();
         alienLaser.clear();
         spaceship.lasers.clear();
         StopSound(ufoLowSound);
         ufoActive = false;
+      } else if (pauseSelected == 2) {
+        shouldQuit = true; // Quit game
       }
     }
     return;
   }
+
 
   if (state == GAME_OVER) {
     if (IsKeyDown(KEY_SPACE)) {
@@ -898,6 +901,12 @@ void Game::drawMainMenu() {
              promptSize, WHITE);
   }
 
+  // Q to quit
+  const char *quitText = "PRESS Q TO QUIT";
+  int quitSize = W / 55;
+  DrawText(quitText, W / 2 - MeasureText(quitText, quitSize) / 2, H * 0.65f,
+           quitSize, DARKGRAY);
+
   // Controls hint
   const char *controls = "ARROWS: MOVE    SPACE: FIRE";
   int ctrlSize = W / 55;
@@ -912,11 +921,20 @@ void Game::drawMainMenu() {
 }
 
 void Game::handleMainMenuInput() {
+    if (IsKeyPressed(KEY_Q)) {
+   shouldQuit = true;
+    return;
+  }
+  
+  // ENTER to proceed to difficulty select
   if (IsKeyPressed(KEY_ENTER)) {
+    selectedDifficulty = 2; // Reset to MEDIUM
     state = DIFFICULTY_SELECT;
-    selectedDifficulty = 2; // default highlight on MEDIUM
+    return;
   }
 }
+
+
 
 // ─── DIFFICULTY SELECT
 // ────────────────────────────────────────────────────────
@@ -1090,11 +1108,11 @@ void Game::drawPauseMenu() {
              {panelX + panelW - 20, panelY + panelH * 0.30f}, 2, YELLOW);
 
   // Options
-  const char *opts[2] = {"RESUME", "MAIN MENU"};
-  Color colors[2] = {GREEN, RED};
+  const char *opts[3] = {"RESUME", "MAIN MENU", "QUIT GAME"};
+  Color colors[3] = {GREEN, YELLOW, RED};
 
-  for (int i = 0; i < 2; i++) {
-    float optY = panelY + panelH * (0.42f + i * 0.28f);
+  for (int i = 0; i < 3; i++) {
+    float optY = panelY + panelH * (0.38f + i * 0.22f);
     bool sel = (pauseSelected == i);
     int fsize = W / 30;
 
