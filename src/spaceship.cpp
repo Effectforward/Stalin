@@ -4,14 +4,14 @@
 // defines the constructor
 Spaceship::Spaceship() {
   // loads the Spaceship.png into the image variable
-  image = LoadTexture("assets/sprites/spaceship.png");
+  texture = LoadTexture("assets/sprites/spaceship.png");
   // centres the Spaceship to the bottom
-  /*subtracting image.width and image.height fixes minor positioning
+  /*subtracting texture.width and texture.height fixes minor positioning
   inconsistency that occurs becuase of the fact that the image will be drawn
   from top to left: When the image is drawn it is not drawn from the centre but
   instead from left most pixel, so the left most pixel becomes the centre*/
-  position.x = (GetScreenWidth() - image.width) / 2.0;
-  position.y = GetScreenHeight() - image.height - 55;
+  position.x = (GetScreenWidth() - texture.width) / 2.0;
+  position.y = GetScreenHeight() - texture.height - 55;
   lastFireTime = 0.0;
   laserSpeed = -15;
   laserDamage = 1;
@@ -19,10 +19,10 @@ Spaceship::Spaceship() {
 
 Spaceship::~Spaceship() {
   // must unload the textures after use (kinda like heap memory)
-  UnloadTexture(image);
+  UnloadTexture(texture);
 }
 
-void Spaceship::Draw() { DrawTextureV(image, position, WHITE); }
+void Spaceship::Draw() { DrawTextureV(texture, position, WHITE); }
 
 void Spaceship::moveLeft() {
   position.x -= speed;
@@ -35,8 +35,8 @@ void Spaceship::moveLeft() {
 void Spaceship::moveRight() {
   position.x += speed;
   // avoids the spaceship escaping the game window
-  if (position.x > GetScreenWidth() - image.width) {
-    position.x = GetScreenWidth() - image.width;
+  if (position.x > GetScreenWidth() - texture.width) {
+    position.x = GetScreenWidth() - texture.width;
   }
 }
 
@@ -48,7 +48,7 @@ void Spaceship::Firelaser() {
   if (GetTime() - lastFireTime >= 0.35) {
 
     lasers.push_back(
-        Laser({position.x + (float(image.width) / 2.0f - 2.0f), position.y},
+        Laser({position.x + (float(texture.width) / 2.0f - 2.0f), position.y},
               laserSpeed, laserDamage));
     lastFireTime = GetTime();
   }
@@ -56,12 +56,12 @@ void Spaceship::Firelaser() {
 
 Rectangle Spaceship::getRect() {
   // a rectangle that is positoned on the poosition of the sopaceship
-  return {position.x, position.y, float(image.width), float(image.height)};
+  return {position.x, position.y, float(texture.width), float(texture.height)};
 }
 
 void Spaceship::Reset() {
-  position.x = (GetScreenWidth() - image.width) / 2.0;
-  position.y = GetScreenHeight() - image.height - 55;
+  position.x = (GetScreenWidth() - texture.width) / 2.0;
+  position.y = GetScreenHeight() - texture.height - 55;
   lasers.clear();
 }
 
