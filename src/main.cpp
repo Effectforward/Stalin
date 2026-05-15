@@ -5,8 +5,15 @@ int main() {
   Color grey = {29, 29, 27, 255};
   const int windowHeight = 750;
   const int windowWidth = 700;
-  // initializes the window
+
+  SetConfigFlags(FLAG_WINDOW_RESIZABLE );
+
   InitWindow(windowWidth, windowHeight, "Stalin");
+  SetExitKey(KEY_NULL); 
+
+  ToggleFullscreen();
+
+  SetWindowMinSize(700, 750);
   InitAudioDevice(); // Initialize audio
   // limits the fps or the game will run at maximum speed
   SetTargetFPS(60);
@@ -19,7 +26,7 @@ int main() {
     // canvas is ready for drawing stuff
     BeginDrawing();
     // by defualt background is black, this clears it with our custom color
-    ClearBackground(grey);
+    ClearBackground(BLACK);
     game.Draw();
     game.update();
 

@@ -64,3 +64,9 @@ void Spaceship::Reset() {
   position.y = GetScreenHeight() - image.height - 55;
   lasers.clear();
 }
+
+
+void Spaceship::Draw(Color tint) {
+    // mirror your existing Draw() but pass tint instead of WHITE
+    DrawTextureV(texture, position, tint);  // adjust if your draw code differs
+}

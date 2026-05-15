@@ -7,8 +7,9 @@
 #include <spaceship.hpp>
 #include <vector>
 
-enum GameState { MENU, PLAYING, GAME_OVER };
-enum Difficulty { NOVICE, EASY, MEDIUM, HARD, STALIN };
+enum GameState { MENU, DIFFICULTY_SELECT, PLAYING, PAUSED, GAME_OVER };
+enum Difficulty { NOVICE, EASY, MEDIUM, HARD, ULTRAVIOLENCE, STALIN, NIGHTMARE };
+void drawPauseMenu();
 
 class Game {
 public:
@@ -24,6 +25,8 @@ public:
   bool run = true; // game running state
   GameState state;
   Difficulty difficulty;
+  void drawPauseMenu();
+  void drawScrollingBackground();
 
 private:
   Spaceship spaceship;
@@ -81,4 +84,30 @@ private:
   void handleMenuInput();
   void checkLevelCompletion();
   void gameOver();
+
+
+   // --- MENU ---
+    void drawMainMenu();
+    void handleMainMenuInput();
+    void drawDifficultyMenu();
+    void handleDifficultyInput();
+
+      int selectedDifficulty;   // 0-4, highlighted option
+    float menuStarTimer;
+    struct MenuStar {
+        float x, y, speed, size;
+    };
+    MenuStar menuStars[80];
+    void initMenuStars();
+    void updateMenuStars();
+    void drawMenuStars();
+    int pauseSelected;
+
+
+    // --- HIT FLASH ---
+bool shipHit;
+float shipHitTimer;
+float shipHitDuration;  // how long the flash lasts
+float shipImmunityTimer;
+    
 };

@@ -46,6 +46,16 @@ Game::Game() {
   if (ufoTexture.id == 0) {
     ufoTexture = LoadTexture("assets/sprites/e1.png"); // Fallback if no ufo.png
   }
+
+  selectedDifficulty = 2;
+  initMenuStars();
+  pauseSelected = 0;
+  selectedDifficulty = 2;
+  initMenuStars();
+  shipHit = false;
+  shipHitTimer = 0.0f;
+  shipHitDuration = 0.6f;
+  shipImmunityTimer = 0.0f;
 }
 
 Game::~Game() {
@@ -61,8 +71,22 @@ Game::~Game() {
 }
 
 void Game::update() {
-  if (state != PLAYING)
+  if (state != PLAYING) // PAUSED, MENU, etc. all skip update
     return;
+  // Hit flash timer
+  if (shipHit) {
+    shipHitTimer -= GetFrameTime();
+    if (shipHitTimer <= 0.0f) {
+      shipHit = false;
+      shipHitTimer = 0.0f;
+    }
+  }
+
+  if (shipImmunityTimer > 0.0f) {
+    shipImmunityTimer -= GetFrameTime();
+    if (shipImmunityTimer < 0.0f)
+      shipImmunityTimer = 0.0f;
+  }
 
   for (auto &laser : spaceship.lasers) {
     laser.update();
@@ -99,42 +123,57 @@ void Game::update() {
   updateUfo();
   checkLevelCompletion();
 }
-
 void Game::Draw() {
   if (state == MENU) {
-    drawMenu();
+    drawMainMenu();
     return;
   }
-  spaceship.Draw();
-  for (auto &laser : spaceship.lasers) {
-    laser.Draw();
+  if (state == DIFFICULTY_SELECT) {
+    drawDifficultyMenu();
+    return;
   }
 
-  for (auto &alien : aliens) {
+  // Draw game world (PLAYING, PAUSED, and GAME_OVER all show the game behind)
+  drawScrollingBackground();
+  // Flash ship red/transparent when hit
+  if (shipImmunityTimer > 0.0f) {
+    // Fast red strobe during hit flash window
+    if (shipHit) {
+      int flashFrame = (int)(shipHitTimer / 0.08f);
+      if (flashFrame % 2 == 0)
+        spaceship.Draw(RED);
+      else
+        spaceship.Draw(Fade(WHITE, 0.0f));
+    } else {
+      // Slower ghost flicker for remaining immunity time
+      int flickerFrame = (int)(shipImmunityTimer / 0.15f);
+      if (flickerFrame % 2 == 0)
+        spaceship.Draw(Fade(WHITE, 0.4f));
+      else
+        spaceship.Draw(WHITE);
+    }
+  } else {
+    spaceship.Draw();
+  }
+  for (auto &laser : spaceship.lasers)
+    laser.Draw();
+  for (auto &alien : aliens)
     alien.Draw();
-  }
-
-  for (auto &laser : alienLaser) {
+  for (auto &laser : alienLaser)
     laser.Draw();
-  }
-
-  for (auto &obstacle : obstacles) {
+  for (auto &obstacle : obstacles)
     obstacle.Draw();
-  }
   drawUfo();
 
-  // Draw HUD Line
+  // HUD
   DrawLineEx({10, float(GetScreenHeight() - 50)},
              {float(GetScreenWidth() - 10), float(GetScreenHeight() - 50)}, 3,
              YELLOW);
-
   DrawText("LIVES:", 10, GetScreenHeight() - 35, 20, YELLOW);
   float startX = 85.0f;
-  for (int i = 0; i < lives; i++) {
+  for (int i = 0; i < lives; i++)
     DrawRectangle(startX + i * 30, GetScreenHeight() - 30, 20, 10, YELLOW);
-  }
 
-  // Draw Level and Difficulty
   const char *diffText = "MED";
   if (difficulty == NOVICE)
     diffText = "NOV";
@@ -142,26 +181,33 @@ void Game::Draw() {
     diffText = "EASY";
   else if (difficulty == HARD)
     diffText = "HARD";
+  else if (difficulty == ULTRAVIOLENCE)
+    diffText = "UV";
   else if (difficulty == STALIN)
     diffText = "STALIN";
-
+  else if (difficulty == NIGHTMARE)
+    diffText = "NMARE";
   DrawText(TextFormat("%s LVL %02d", diffText, level), GetScreenWidth() - 170,
            GetScreenHeight() - 35, 20, YELLOW);
 
-  // Draw Scores
   DrawText("SCORE", 50, 20, 20, YELLOW);
   DrawText(TextFormat("%05d", score), 50, 45, 20, YELLOW);
-
   DrawText("HI-SCORE", GetScreenWidth() - 150, 20, 20, YELLOW);
   DrawText(TextFormat("%05d", highScore), GetScreenWidth() - 150, 45, 20,
            YELLOW);
 
-  // Draw Border (Encompassing the whole game area except HUD)
   DrawRectangleLinesEx(
       {5, 5, float(GetScreenWidth() - 10), float(GetScreenHeight() - 55)}, 3,
       YELLOW);
 
+  // Overlay states — drawn ON TOP of the game
+  if (state == PAUSED) {
+    drawPauseMenu();
+  }
+
   if (state == GAME_OVER) {
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(),
+                  Fade(BLACK, 0.55f));
     DrawText("GAME OVER", GetScreenWidth() / 2 - 100,
              GetScreenHeight() / 2 - 50, 40, RED);
     DrawText("Press SPACE to return to Menu", GetScreenWidth() / 2 - 140,
@@ -171,9 +217,47 @@ void Game::Draw() {
 
 void Game::handleInput() {
   if (state == MENU) {
-    handleMenuInput();
+    handleMainMenuInput();
     return;
   }
+  if (state == DIFFICULTY_SELECT) {
+    handleDifficultyInput();
+    return;
+  }
+
+  // ESC toggles pause from gameplay
+  if (state == PLAYING && IsKeyPressed(KEY_ESCAPE)) {
+    pauseSelected = 0;
+    state = PAUSED;
+    return;
+  }
+
+  if (state == PAUSED) {
+    if (IsKeyPressed(KEY_ESCAPE)) {
+      state = PLAYING;
+      return;
+    } // ESC again = resume
+
+    if (IsKeyPressed(KEY_UP))
+      pauseSelected = (pauseSelected - 1 + 2) % 2;
+    if (IsKeyPressed(KEY_DOWN))
+      pauseSelected = (pauseSelected + 1) % 2;
+
+    if (IsKeyPressed(KEY_ENTER)) {
+      if (pauseSelected == 0) {
+        state = PLAYING; // Resume
+      } else {
+        state = MENU; // Main menu
+        aliens.clear();
+        alienLaser.clear();
+        spaceship.lasers.clear();
+        StopSound(ufoLowSound);
+        ufoActive = false;
+      }
+    }
+    return;
+  }
+
   if (state == GAME_OVER) {
     if (IsKeyDown(KEY_SPACE)) {
       state = MENU;
@@ -181,15 +265,17 @@ void Game::handleInput() {
     return;
   }
 
-  if (IsKeyDown(KEY_LEFT)) {
+  // Normal gameplay input
+  if (IsKeyDown(KEY_LEFT))
     spaceship.moveLeft();
-  } else if (IsKeyDown(KEY_RIGHT)) {
+  else if (IsKeyDown(KEY_RIGHT))
     spaceship.moveRight();
-  } else if (IsKeyDown(KEY_SPACE)) {
+  else if (IsKeyDown(KEY_SPACE)) {
     spaceship.Firelaser();
+    if (!IsSoundPlaying(shootSound))
+      PlaySound(shootSound);
   }
 }
-
 void Game::deleteInactiveLasers() {
   // Cleanup player lasers
   for (auto it = spaceship.lasers.begin(); it != spaceship.lasers.end();) {
@@ -209,17 +295,10 @@ void Game::deleteInactiveLasers() {
     }
   }
 }
-
 std::vector<Alien> Game::CreateAliens() {
-
   std::vector<Alien> aliens;
-  // OLD CODE:
-  // for (int row = 0; row < 7; row++) {
-  // 	for (int column = 0; column < 10; column++) {
-  // NEW CODE: Increase rows to 10 and columns to 15
-  int rows = 5;
-  int cols = 11;
 
+  int rows = 5, cols = 11;
   switch (difficulty) {
   case NOVICE:
     rows = 3;
@@ -231,42 +310,55 @@ std::vector<Alien> Game::CreateAliens() {
     break;
   case MEDIUM:
     rows = 5;
-    cols = 10;
+    cols = 11;
     break;
   case HARD:
-    rows = 6;
-    cols = 12;
+    rows = 7;
+    cols = 13;
     break;
-  case STALIN:
+  case ULTRAVIOLENCE:
     rows = 8;
     cols = 14;
     break;
+  case STALIN:
+    rows = 9;
+    cols = 15;
+    break;
+  case NIGHTMARE:
+    rows = 10;
+    cols = 16;
+    break;
   }
 
+  // Fixed spacing that looks tight and arcade-like
+  float spacingX = 55.0f;
+  float spacingY = 45.0f;
+
+  // Total grid pixel dimensions
+  float gridW = (cols - 1) * spacingX;
+  float gridH = (rows - 1) * spacingY;
+
+  // Centre horizontally, start 15% from top
+  float startX = (GetScreenWidth() - gridW) / 2.0f;
+  float startY = (GetScreenHeight() * 0.15f);
+
   for (int row = 0; row < rows; row++) {
-    for (int column = 0; column < cols; column++) {
+    for (int col = 0; col < cols; col++) {
       int alienType;
-      if (row == 0) {
+      if (row == 0)
         alienType = 3;
-      } else if (row == 1 || row == 2) {
+      else if (row == 1 || row == 2)
         alienType = 2;
-
-      } else {
+      else
         alienType = 1;
-      }
 
-      // OLD CODE:
-      // float x = 75 + column * 55;
-      // float y = 110 + row * 55;
-      // NEW CODE: Decrease spacing from 55 to 35
-      float x = 75 + column * 35;
-      float y = 110 + row * 35;
+      float x = startX + col * spacingX;
+      float y = startY + row * spacingY;
       aliens.push_back(Alien(alienType, {x, y}));
     }
   }
   return aliens;
 }
-
 void Game::moveAlien() {
   // NEW CODE: Space Invaders block movement logic
   // We only want the aliens to move if the specific interval has passed.
@@ -275,41 +367,59 @@ void Game::moveAlien() {
     timeLastAlienMoved = GetTime();
 
     // Calculate the new speed interval based on how many aliens are left.
-    // The difficulty-dependent factors prevent aliens from speeding up too fast.
+    // The difficulty-dependent factors prevent aliens from speeding up too
+    // fast.
     float startInterval = 0.5f;
     float endInterval = 0.1f;
 
     switch (difficulty) {
     case NOVICE:
-      startInterval = 1.0f;
-      endInterval = 0.6f;
+      startInterval = 1.2f;
+      endInterval = 0.8f;
       break;
     case EASY:
-      startInterval = 0.8f;
-      endInterval = 0.4f;
+      startInterval = 0.9f;
+      endInterval = 0.5f;
       break;
     case MEDIUM:
       startInterval = 0.6f;
-      endInterval = 0.2f;
+      endInterval = 0.25f;
       break;
     case HARD:
-      startInterval = 0.4f;
-      endInterval = 0.1f;
+      startInterval = 0.35f;
+      endInterval = 0.08f;
+      break;
+    case ULTRAVIOLENCE:
+      startInterval = 0.25f;
+      endInterval = 0.05f;
       break;
     case STALIN:
-      startInterval = 0.2f;
-      endInterval = 0.06f;
+      startInterval = 0.15f;
+      endInterval = 0.03f;
+      break;
+    case NIGHTMARE:
+      startInterval = 0.08f;
+      endInterval = 0.01f;
       break;
     }
 
     // Linear interpolation based on remaining aliens
     // We assume a full grid size for each difficulty to calculate the ratio
     int maxAliens = 1;
-    if (difficulty == NOVICE) maxAliens = 3 * 6;
-    else if (difficulty == EASY) maxAliens = 4 * 8;
-    else if (difficulty == MEDIUM) maxAliens = 5 * 10;
-    else if (difficulty == HARD) maxAliens = 6 * 12;
-    else if (difficulty == STALIN) maxAliens = 8 * 14;
+    if (difficulty == NOVICE)
+      maxAliens = 3 * 6;
+    else if (difficulty == EASY)
+      maxAliens = 4 * 8;
+    else if (difficulty == MEDIUM)
+      maxAliens = 5 * 11;
+    else if (difficulty == HARD)
+      maxAliens = 7 * 13;
+    else if (difficulty == ULTRAVIOLENCE)
+      maxAliens = 8 * 14;
+    else if (difficulty == STALIN)
+      maxAliens = 9 * 15;
+    else if (difficulty == NIGHTMARE)
+      maxAliens = 10 * 16;
 
     float ratio = (float)aliens.size() / (float)maxAliens;
     alienMoveInterval = endInterval + (ratio * (startInterval - endInterval));
@@ -384,13 +494,23 @@ void Game::alienShootLaser() {
     timeLastAlienShot = GetTime();
 
     // Randomize the interval for the next shot (between 0.5 and 2.5 seconds)
-    // This makes the alien fire rate unpredictable like the arcade game, change
-    // this to increase or decrease the fire rate
+    // This makes the alien fire rate unpredictable like the arcade game,
+    // change this to increase or decrease the fire rate
     float scale = 1.0f;
-    if (difficulty == EASY) scale = 1.5f;
-    if (difficulty == HARD) scale = 0.7f;
-    if (difficulty == STALIN) scale = 0.3f;
-    
+
+    if (difficulty == NOVICE)
+      scale = 3.0f;
+    if (difficulty == EASY)
+      scale = 2.0f;
+    if (difficulty == HARD)
+      scale = 0.5f;
+    if (difficulty == ULTRAVIOLENCE)
+      scale = 0.3f;
+    if (difficulty == STALIN)
+      scale = 0.15f;
+    if (difficulty == NIGHTMARE)
+      scale = 0.05f;
+
     alienShootInterval = (GetRandomValue(1, 6) / 10.0) * scale;
 
     // Pick a random alien to shoot
@@ -411,39 +531,32 @@ void Game::alienShootLaser() {
               6, alien.damage));
   }
 }
-
 void Game::checkForCollisions() {
+
   // --- SPACESHIP LASER COLLISIONS ---
   for (auto &laser : spaceship.lasers) {
+
     // 1. Check collision with Aliens
     auto alienIt = aliens.begin();
     while (alienIt != aliens.end()) {
       if (CheckCollisionRecs(alienIt->getRect(), laser.getRect())) {
-        // Instead of deleting immediately, we reduce the alien's HP
         alienIt->hp -= 1;
-        laser.active = false; // The laser is destroyed on impact
-
-        // If HP reaches 0, the alien is defeated and removed from the list
+        laser.active = false;
         if (alienIt->hp <= 0) {
-          // Add score based on type
           if (alienIt->type == 3)
             score += 30;
           else if (alienIt->type == 2)
             score += 20;
           else
             score += 10;
-
-          // Update High Score
           if (score > highScore)
             highScore = score;
-
           PlaySound(alienDeathSound);
           alienIt = aliens.erase(alienIt);
         } else {
-          // If still alive, move to the next alien in the list
           ++alienIt;
         }
-        break; // Stop checking this laser since it already hit an alien
+        break;
       } else {
         ++alienIt;
       }
@@ -456,7 +569,7 @@ void Game::checkForCollisions() {
       if (CheckCollisionRecs(ufoRect, laser.getRect())) {
         ufoActive = false;
         laser.active = false;
-        score += 100; // Bonus score for UFO
+        score += 100;
         if (score > highScore)
           highScore = score;
         PlaySound(ufoHighSound);
@@ -464,16 +577,13 @@ void Game::checkForCollisions() {
       }
     }
 
-    // 3. Check collision with Obstacles (Separated from aliens for performance)
+    // 3. Check collision with Obstacles
     if (laser.active) {
       for (auto &obstacle : obstacles) {
-        // Dynamic Damage: The width of the impact depends on the laser's damage
-        // stat
         float extraWidth = (laser.damage / 10.0f) * 2.0f;
         Rectangle damageRect = {
             laser.getRect().x - extraWidth, laser.getRect().y,
             laser.getRect().width + (extraWidth * 2), laser.getRect().height};
-
         auto blockIt = obstacle.blocks.begin();
         while (blockIt != obstacle.blocks.end()) {
           if (CheckCollisionRecs(blockIt->getRect(), damageRect)) {
@@ -491,33 +601,34 @@ void Game::checkForCollisions() {
 
   // --- ALIEN LASER COLLISIONS ---
   for (auto &laser : alienLaser) {
-    // 3. Check collision with the Spaceship (The Player)
-    // BUG FIX: Added laser.active check to prevent multiple hits from the same
-    // laser
+
+    // 4. Check collision with Spaceship
     if (laser.active &&
         CheckCollisionRecs(laser.getRect(), spaceship.getRect())) {
       laser.active = false;
-      lives--; // decreases total lives by 1
-      PlaySound(explosionSound);
-      if (lives <= 0) {
-        gameOver();
+      if (shipImmunityTimer <= 0.0f) {
+        lives--;
+        PlaySound(explosionSound);
+        shipHit = true;
+        shipHitTimer = shipHitDuration;
+        shipImmunityTimer = 3.0f;
+        if (lives <= 0)
+          gameOver();
       }
     }
 
-    // 4. Check collision with Obstacles (Aliens can also damage shields)
+    // 5. Check collision with Obstacles
     if (laser.active) {
       for (auto &obstacle : obstacles) {
         float extraWidth = (laser.damage / 10.0f) * 2.0f;
         Rectangle damageRect = {
             laser.getRect().x - extraWidth, laser.getRect().y,
             laser.getRect().width + (extraWidth * 2), laser.getRect().height};
-
         auto blockIt = obstacle.blocks.begin();
         while (blockIt != obstacle.blocks.end()) {
           if (CheckCollisionRecs(blockIt->getRect(), damageRect)) {
             blockIt = obstacle.blocks.erase(blockIt);
             laser.active = false;
-            // Stronger alien lasers can punch through more blocks
           } else {
             ++blockIt;
           }
@@ -527,25 +638,27 @@ void Game::checkForCollisions() {
       }
     }
   }
-  // --- ALIEN BODY COLLISIONS (Direct Contact) ---
+
+  // --- ALIEN BODY COLLISIONS ---
   for (auto &alien : aliens) {
-    // 5. Alien vs Obstacles (Aliens "crush" blocks they touch)
+
+    // 6. Alien vs Obstacles
     for (auto &obstacle : obstacles) {
       auto blockIt = obstacle.blocks.begin();
       while (blockIt != obstacle.blocks.end()) {
-        if (CheckCollisionRecs(alien.getRect(), blockIt->getRect())) {
-          // Alien is strong enough to instantly crush obstacle blocks
+        if (CheckCollisionRecs(alien.getRect(), blockIt->getRect()))
           blockIt = obstacle.blocks.erase(blockIt);
-        } else {
+        else
           ++blockIt;
-        }
       }
     }
 
-    // 6. Alien vs Spaceship (Direct contact is fatal)
+    // 7. Alien vs Spaceship
     if (CheckCollisionRecs(alien.getRect(), spaceship.getRect())) {
-      PlaySound(explosionSound);
-      gameOver();
+      if (shipImmunityTimer <= 0.0f) {
+        PlaySound(explosionSound);
+        gameOver();
+      }
     }
   }
 }
@@ -568,37 +681,49 @@ void Game::Reset() {
   alienDirection = 1;
   // Re-initialize parameters based on difficulty
   switch (difficulty) {
+    // Reset() base intervals
   case NOVICE:
-    alienMoveInterval = 0.8;
-    spaceship.setLaserSpeed(-15);
-    lives = 10; // Maximum lives for Novice
+    alienMoveInterval = 1.2;
+    lives = 10;
+    spaceship.setLaserSpeed(-18);
     break;
   case EASY:
-    alienMoveInterval = 1.2;
-    spaceship.setLaserSpeed(-15);
-    lives = 5; // More lives for Easy
+    alienMoveInterval = 0.9;
+    lives = 5;
+    spaceship.setLaserSpeed(-16);
     break;
   case MEDIUM:
-    alienMoveInterval = 0.7;
-    spaceship.setLaserSpeed(-20);
+    alienMoveInterval = 0.6;
     lives = 3;
+    spaceship.setLaserSpeed(-20);
     break;
   case HARD:
-    alienMoveInterval = 0.4;
-    spaceship.setLaserSpeed(-25);
-    lives = 3;
+    alienMoveInterval = 0.35;
+    lives = 2;
+    spaceship.setLaserSpeed(-22);
+    break;
+  case ULTRAVIOLENCE:
+    alienMoveInterval = 0.25;
+    lives = 2;
+    spaceship.setLaserSpeed(-24);
     break;
   case STALIN:
-    alienMoveInterval = 0.2;
-    spaceship.setLaserSpeed(-35);
-    lives = 3; // Given more lives to make it playable
+    alienMoveInterval = 0.15;
+    lives = 1;
+    spaceship.setLaserSpeed(-25);
+    break;
+  case NIGHTMARE:
+    alienMoveInterval = 0.08;
+    lives = 1;
+    spaceship.setLaserSpeed(-28);
     break;
   }
 
   timeLastAlienMoved = GetTime();
   timeLastAlienShot = GetTime();
   alienShootInterval = GetRandomValue(10, 30) / 10.0;
-  if (difficulty == STALIN) alienShootInterval = 0.1;
+  if (difficulty == STALIN)
+    alienShootInterval = 0.1;
   currentMoveSound = 0;
   ufoActive = false;
   nextUfoSpawnTime = GetTime() + GetRandomValue(10, 20);
@@ -698,4 +823,317 @@ void Game::nextLevel() {
   alienMoveInterval *= 0.9;
   if (alienMoveInterval < 0.1)
     alienMoveInterval = 0.1;
+}
+
+// ─── MENU STARS (animated background)
+// ────────────────────────────────────────
+
+void Game::initMenuStars() {
+  for (int i = 0; i < 80; i++) {
+    auto &s = menuStars[i];
+    s.x = GetRandomValue(0, GetScreenWidth());
+    s.y = GetRandomValue(0, GetScreenHeight());
+    if (i < 40) {
+      s.speed = GetRandomValue(10, 25) / 100.0f; // slow, distant
+      s.size = 1.0f;
+    } else if (i < 65) {
+      s.speed = GetRandomValue(30, 55) / 100.0f; // mid speed
+      s.size = 1.5f;
+    } else {
+      s.speed = GetRandomValue(60, 90) / 100.0f; // fast, close
+      s.size = 2.5f;
+    }
+  }
+}
+
+void Game::updateMenuStars() {
+  for (auto &s : menuStars) {
+    s.y += s.speed;
+    if (s.y > GetScreenHeight()) {
+      s.y = 0;
+      s.x = GetRandomValue(0, GetScreenWidth());
+    }
+  }
+}
+
+void Game::drawMenuStars() {
+  for (auto &s : menuStars)
+    DrawCircle((int)s.x, (int)s.y, s.size, Fade(WHITE, 0.6f));
+}
+
+// ─── MAIN MENU
+// ────────────────────────────────────────────────────────────────
+
+void Game::drawMainMenu() {
+  int W = GetScreenWidth();
+  int H = GetScreenHeight();
+
+  updateMenuStars();
+  drawMenuStars();
+
+  // Outer border
+  DrawRectangleLinesEx({5, 5, float(W - 10), float(H - 10)}, 3, YELLOW);
+
+  // Title
+  const char *title = "STALIN";
+  const char *subtitle = "I N V A D E R S";
+  int titleSize = W / 10;
+  int subSize = W / 30;
+
+  int titleX = W / 2 - MeasureText(title, titleSize) / 2;
+  DrawText(title, titleX, H * 0.18f, titleSize, YELLOW);
+
+  int subX = W / 2 - MeasureText(subtitle, subSize) / 2;
+  DrawText(subtitle, subX, H * 0.18f + titleSize + 8, subSize, RED);
+
+  // Separator line
+  DrawLineEx({float(W) * 0.2f, H * 0.42f}, {float(W) * 0.8f, H * 0.42f}, 2,
+             YELLOW);
+
+  // Blinking "PRESS ENTER"
+  if ((int)(GetTime() * 2) % 2 == 0) {
+    const char *prompt = "PRESS ENTER TO START";
+    int promptSize = W / 40;
+    DrawText(prompt, W / 2 - MeasureText(prompt, promptSize) / 2, H * 0.55f,
+             promptSize, WHITE);
+  }
+
+  // Controls hint
+  const char *controls = "ARROWS: MOVE    SPACE: FIRE";
+  int ctrlSize = W / 55;
+  DrawText(controls, W / 2 - MeasureText(controls, ctrlSize) / 2, H * 0.72f,
+           ctrlSize, GRAY);
+
+  // Footer
+  const char *footer = "University of Gujrat  |  BS IT  |  2026";
+  int footSize = W / 70;
+  DrawText(footer, W / 2 - MeasureText(footer, footSize) / 2, H - 35, footSize,
+           DARKGRAY);
+}
+
+void Game::handleMainMenuInput() {
+  if (IsKeyPressed(KEY_ENTER)) {
+    state = DIFFICULTY_SELECT;
+    selectedDifficulty = 2; // default highlight on MEDIUM
+  }
+}
+
+// ─── DIFFICULTY SELECT
+// ────────────────────────────────────────────────────────
+
+void Game::drawDifficultyMenu() {
+  int W = GetScreenWidth();
+  int H = GetScreenHeight();
+
+  updateMenuStars();
+  drawMenuStars();
+
+  DrawRectangleLinesEx({5, 5, float(W - 10), float(H - 10)}, 3, YELLOW);
+
+  // Title
+  const char *title = "SELECT DIFFICULTY";
+  int titleSize = W / 25;
+  DrawText(title, W / 2 - MeasureText(title, titleSize) / 2, H * 0.08f,
+           titleSize, YELLOW);
+
+  DrawLineEx({float(W) * 0.1f, H * 0.20f}, {float(W) * 0.9f, H * 0.20f}, 2,
+             YELLOW);
+
+  // Difficulty data
+  struct DiffOption {
+    const char *name;
+    const char *desc;
+    const char *stats;
+    Color color;
+  };
+
+  DiffOption opts[7] = {
+      {"NOVICE", "I'm Too Young To Die", "10 LIVES | GLACIAL  |  3x6  ", GREEN},
+      {"EASY", "Hey, Not Too Rough", " 5 LIVES | SLOW     |  4x8  ", SKYBLUE},
+      {"MEDIUM", "Hurt Me Plenty", " 3 LIVES | CLASSIC  |  5x11 ", YELLOW},
+      {"HARD", "Ultra-Violence", " 2 LIVES | RUTHLESS |  7x13 ", ORANGE},
+      {"ULTRA-VIOLENCE",
+       "No Rest For The Living",
+       " 2 LIVES | BRUTAL   |  8x14 ",
+       {255, 120, 0, 255}},
+      {"STALIN", "Nightmare!", " 1 LIFE  | CHAOS    |  9x15 ", RED},
+      {"NIGHTMARE",
+       "You Will Not Finish This",
+       " 1 LIFE  | INSANITY | 10x16 ",
+       {180, 0, 255, 255}},
+  };
+  // Card layout
+  float cardH = H * 0.085f;
+  float cardW = W * 0.65f;
+  float cardX = (W - cardW) / 2.0f;
+  float totalH = 7 * cardH + 6 * 8;
+  float startY = H * 0.22f; // starts just below the separator line
+  for (int i = 0; i < 7; i++) {
+    float y = startY + i * (cardH + 12);
+    bool selected = (i == selectedDifficulty);
+    Color c = opts[i].color;
+
+    // Card background
+    DrawRectangleRounded({cardX, y, cardW, cardH}, 0.15f, 8,
+                         selected ? Fade(c, 0.25f) : Fade(c, 0.07f));
+    // Card border
+    DrawRectangleRoundedLines({cardX, y, cardW, cardH}, 0.15f, 8,
+                              selected ? c : Fade(c, 0.35f));
+
+    // Selection arrow
+    if (selected)
+      DrawText(">", cardX - 28, y + cardH / 2 - 12, 24, c);
+
+    // Name
+    int nameSize = (int)(cardH * 0.38f);
+    DrawText(opts[i].name, cardX + 20, y + cardH * 0.12f, nameSize,
+             selected ? c : Fade(c, 0.6f));
+
+    // Desc
+    int descSize = (int)(cardH * 0.22f);
+    DrawText(opts[i].desc, cardX + 20, y + cardH * 0.55f, descSize,
+             selected ? WHITE : GRAY);
+
+    // Stats (right-aligned inside card)
+    int statSize = (int)(cardH * 0.20f);
+    int statW = MeasureText(opts[i].stats, statSize);
+    DrawText(opts[i].stats, cardX + cardW - statW - 20, y + cardH * 0.55f,
+             statSize, selected ? c : Fade(c, 0.5f));
+  }
+
+  // Bottom hint
+  const char *hint = "UP/DOWN: Navigate    ENTER: Confirm    BACKSPACE: Back";
+  int hintSize = W / 65;
+  DrawText(hint, W / 2 - MeasureText(hint, hintSize) / 2, H - 35, hintSize,
+           DARKGRAY);
+}
+
+void Game::handleDifficultyInput() {
+  if (IsKeyPressed(KEY_UP))
+    selectedDifficulty = (selectedDifficulty - 1 + 7) % 7;
+
+  if (IsKeyPressed(KEY_DOWN))
+    selectedDifficulty = (selectedDifficulty + 1) % 7;
+
+  if (IsKeyPressed(KEY_BACKSPACE))
+    state = MENU;
+
+  if (IsKeyPressed(KEY_ENTER)) {
+    difficulty = (Difficulty)selectedDifficulty;
+    Reset();
+    state = PLAYING;
+  }
+
+  // Keep the old number keys working too
+  if (IsKeyPressed(KEY_ONE)) {
+    difficulty = NOVICE;
+    Reset();
+    state = PLAYING;
+  }
+  if (IsKeyPressed(KEY_TWO)) {
+    difficulty = EASY;
+    Reset();
+    state = PLAYING;
+  }
+  if (IsKeyPressed(KEY_THREE)) {
+    difficulty = MEDIUM;
+    Reset();
+    state = PLAYING;
+  }
+  if (IsKeyPressed(KEY_FOUR)) {
+    difficulty = HARD;
+    Reset();
+    state = PLAYING;
+  }
+  if (IsKeyPressed(KEY_FIVE)) {
+    difficulty = STALIN;
+    Reset();
+    state = PLAYING;
+  }
+  if (IsKeyPressed(KEY_SIX)) {
+    difficulty = ULTRAVIOLENCE;
+    Reset();
+    state = PLAYING;
+  }
+  if (IsKeyPressed(KEY_SEVEN)) {
+    difficulty = NIGHTMARE;
+    Reset();
+    state = PLAYING;
+  }
+}
+
+void Game::drawPauseMenu() {
+  int W = GetScreenWidth();
+  int H = GetScreenHeight();
+
+  // Draw the game behind it (already drawn before this is called)
+  // Dark overlay
+  DrawRectangle(0, 0, W, H, Fade(BLACK, 0.65f));
+
+  // Panel
+  float panelW = W * 0.35f;
+  float panelH = H * 0.40f;
+  float panelX = (W - panelW) / 2.0f;
+  float panelY = (H - panelH) / 2.0f;
+
+  DrawRectangleRounded({panelX, panelY, panelW, panelH}, 0.1f, 8,
+                       {20, 20, 20, 240});
+  DrawRectangleRoundedLines({panelX, panelY, panelW, panelH}, 0.1f, 8, YELLOW);
+
+  // Title
+  const char *title = "PAUSED";
+  int titleSize = W / 18;
+  DrawText(title, W / 2 - MeasureText(title, titleSize) / 2,
+           panelY + panelH * 0.08f, titleSize, YELLOW);
+
+  DrawLineEx({panelX + 20, panelY + panelH * 0.30f},
+             {panelX + panelW - 20, panelY + panelH * 0.30f}, 2, YELLOW);
+
+  // Options
+  const char *opts[2] = {"RESUME", "MAIN MENU"};
+  Color colors[2] = {GREEN, RED};
+
+  for (int i = 0; i < 2; i++) {
+    float optY = panelY + panelH * (0.42f + i * 0.28f);
+    bool sel = (pauseSelected == i);
+    int fsize = W / 30;
+
+    if (sel)
+      DrawText(">", panelX + 18, optY, fsize, colors[i]);
+
+    DrawText(opts[i], W / 2 - MeasureText(opts[i], fsize) / 2, optY, fsize,
+             sel ? colors[i] : Fade(colors[i], 0.45f));
+  }
+
+  // Hint
+  const char *hint = "UP/DOWN: Navigate    ENTER: Confirm";
+  int hintSize = W / 65;
+  DrawText(hint, W / 2 - MeasureText(hint, hintSize) / 2, panelY + panelH - 28,
+           hintSize, DARKGRAY);
+}
+
+void Game::drawScrollingBackground() {
+  for (int i = 0; i < 80; i++) {
+    auto &s = menuStars[i];
+    s.y += s.speed * 2.5f;
+    if (s.y > GetScreenHeight()) {
+      s.y = 0;
+      s.x = GetRandomValue(0, GetScreenWidth());
+    }
+
+    // vary color and brightness by index to create depth layers
+    Color starColor;
+    if (i < 40) {
+      // small distant stars — dim white
+      starColor = Fade(WHITE, 0.35f);
+    } else if (i < 65) {
+      // mid stars — yellow tint
+      starColor = Fade(YELLOW, 0.55f);
+    } else {
+      // close stars — bright blue/cyan, bigger
+      starColor = Fade(SKYBLUE, 0.80f);
+    }
+
+    DrawCircleV({s.x, s.y}, s.size, starColor);
+  }
 }
