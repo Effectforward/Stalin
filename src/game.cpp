@@ -50,8 +50,6 @@ Game::Game() {
   selectedDifficulty = 2;
   initMenuStars();
   pauseSelected = 0;
-  selectedDifficulty = 2;
-  initMenuStars();
   shipHit = false;
   shipHitTimer = 0.0f;
   shipHitDuration = 0.6f;
