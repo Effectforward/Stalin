@@ -835,33 +835,47 @@ void Game::initMenuStars() {
     auto &s = menuStars[i];
     s.x = GetRandomValue(0, GetScreenWidth());
     s.y = GetRandomValue(0, GetScreenHeight());
-    if (i < 40) {
-      s.speed = GetRandomValue(10, 25) / 100.0f; // slow, distant
-      s.size = 1.0f;
-    } else if (i < 65) {
-      s.speed = GetRandomValue(30, 55) / 100.0f; // mid speed
-      s.size = 1.5f;
+    s.drift = GetRandomValue(-5, 5) / 100.0f;
+
+    if (i < 50) {
+      s.speed = GetRandomValue(20, 40) / 100.0f;
+      s.size  = 1.0f;
+    } else if (i < 70) {
+      s.speed = GetRandomValue(80, 120) / 100.0f;
+      s.size  = 1.5f;
     } else {
-      s.speed = GetRandomValue(60, 90) / 100.0f; // fast, close
-      s.size = 2.5f;
+      s.speed = GetRandomValue(180, 220) / 100.0f;
+      s.size  = 2.0f;
     }
   }
 }
 
+
+
 void Game::updateMenuStars() {
-  for (auto &s : menuStars) {
+  for (int i = 0; i < 80; i++) {
+    auto &s = menuStars[i];
     s.y += s.speed;
+    s.x += s.drift;
     if (s.y > GetScreenHeight()) {
       s.y = 0;
       s.x = GetRandomValue(0, GetScreenWidth());
     }
+    if (s.x < 0)                s.x = GetScreenWidth();
+    if (s.x > GetScreenWidth()) s.x = 0;
+  }
+}
+void Game::drawMenuStars() {
+  for (int i = 0; i < 80; i++) {
+    auto &s = menuStars[i];
+    Color c;
+    if (i < 50)       c = Fade(WHITE, 0.4f);
+    else if (i < 70)  c = Fade(WHITE, 0.75f);
+    else              c = WHITE;
+    DrawCircleV({s.x, s.y}, s.size, c);
   }
 }
 
-void Game::drawMenuStars() {
-  for (auto &s : menuStars)
-    DrawCircle((int)s.x, (int)s.y, s.size, Fade(WHITE, 0.6f));
-}
 
 // ─── MAIN MENU
 // ────────────────────────────────────────────────────────────────
@@ -1128,29 +1142,9 @@ void Game::drawPauseMenu() {
   DrawText(hint, W / 2 - MeasureText(hint, hintSize) / 2, panelY + panelH - 28,
            hintSize, DARKGRAY);
 }
-
 void Game::drawScrollingBackground() {
-  for (int i = 0; i < 80; i++) {
-    auto &s = menuStars[i];
-    s.y += s.speed * 2.5f;
-    if (s.y > GetScreenHeight()) {
-      s.y = 0;
-      s.x = GetRandomValue(0, GetScreenWidth());
-    }
-
-    // vary color and brightness by index to create depth layers
-    Color starColor;
-    if (i < 40) {
-      // small distant stars — dim white
-      starColor = Fade(WHITE, 0.35f);
-    } else if (i < 65) {
-      // mid stars — yellow tint
-      starColor = Fade(YELLOW, 0.55f);
-    } else {
-      // close stars — bright blue/cyan, bigger
-      starColor = Fade(SKYBLUE, 0.80f);
-    }
-
-    DrawCircleV({s.x, s.y}, s.size, starColor);
-  }
+  updateMenuStars();
+  drawMenuStars();
 }
+
+

@@ -104,6 +104,7 @@ private:
   float menuStarTimer;
   struct MenuStar {
     float x, y, speed, size;
+    float drift;
   };
   MenuStar menuStars[80];
   void initMenuStars();
