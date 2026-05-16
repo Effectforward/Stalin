@@ -592,6 +592,7 @@ void Game::checkForCollisions() {
           if (CheckCollisionRecs(blockIt->getRect(), damageRect)) {
             blockIt = obstacle.blocks.erase(blockIt);
             laser.active = false;
+            break;
           } else {
             ++blockIt;
           }
