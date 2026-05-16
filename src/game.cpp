@@ -993,15 +993,43 @@ void Game::drawMainMenu() {
            DARKGRAY);
 }
 
+// ─── handleMainMenuInput ─────────────────────────────────────
+//
+//  Mouse hit zones are matched to the text positions in
+//  drawMainMenu(). Using fractional Y so they stay aligned
+//  if the window is resized.
+//
 void Game::handleMainMenuInput() {
+  int W = GetScreenWidth();
+  int H = GetScreenHeight();
+  Vector2 mouse = GetMousePosition();
+
+  // // "PRESS ENTER TO START" blinking text area
+  // Rectangle startRect = {float(W) * 0.2f, float(H) * 0.52f, float(W) * 0.6f,
+  //                        40};
+  // if (CheckCollisionPointRec(mouse, startRect) &&
+  //     IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+  //   selectedDifficulty = 2; // default to MEDIUM
+  //   state = DIFFICULTY_SELECT;
+  //   return;
+  // }
+
+  // // "PRESS Q TO QUIT" text area
+  // Rectangle quitRect = {float(W) * 0.2f, float(H) * 0.62f, float(W) * 0.6f, 35};
+  // if (CheckCollisionPointRec(mouse, quitRect) &&
+  //     IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+  //   shouldQuit = true;
+  //   return;
+  // }
+
+  // Keyboard fallbacks
   if (IsKeyPressed(KEY_Q)) {
     shouldQuit = true;
     return;
   }
-
-  // ENTER to proceed to difficulty select
+  
   if (IsKeyPressed(KEY_ENTER)) {
-    selectedDifficulty = 2; // Reset to MEDIUM
+    selectedDifficulty = 2;
     state = DIFFICULTY_SELECT;
     return;
   }
@@ -1100,13 +1128,52 @@ void Game::drawDifficultyMenu() {
            DARKGRAY);
 }
 
+// ─── handleDifficultyInput ───────────────────────────────────
+//
+//  Mouse hover over a card updates selectedDifficulty in real
+//  time so the highlight follows the cursor — same feedback
+//  the keyboard gives. A click then confirms the choice.
+//
+//  Card geometry must match drawDifficultyMenu exactly.
+//
 void Game::handleDifficultyInput() {
+  int W = GetScreenWidth();
+  int H = GetScreenHeight();
+  Vector2 mouse = GetMousePosition();
+
+  float cardH = H * 0.085f;
+  float cardW = W * 0.65f;
+  float cardX = (W - cardW) / 2.0f;
+  float startY = H * 0.22f;
+
+  for (int i = 0; i < 8; i++) {
+    float y = startY + i * (cardH + 12);
+    Rectangle cardRect = {cardX, y, cardW, cardH};
+    if (!CheckCollisionPointRec(mouse, cardRect))
+      continue;
+
+    // Hover highlights the card
+    selectedDifficulty = i;
+
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      if (i == 7) {
+        // CUSTOM card — go to custom mode screen instead of playing
+        customSelected = 0;
+        customPage = 0;
+        state = CUSTOM_MODE;
+      } else {
+        difficulty = (Difficulty)i;
+        Reset();
+        state = PLAYING;
+      }
+    }
+  }
+
+  // ── Keyboard ───────────────────────────────────────────────
   if (IsKeyPressed(KEY_UP))
     selectedDifficulty = (selectedDifficulty - 1 + 8) % 8;
-
   if (IsKeyPressed(KEY_DOWN))
     selectedDifficulty = (selectedDifficulty + 1) % 8;
-
   if (IsKeyPressed(KEY_BACKSPACE))
     state = MENU;
 
@@ -1122,7 +1189,7 @@ void Game::handleDifficultyInput() {
     }
   }
 
-  // Keep the old number keys working too
+  // Number key shortcuts — preserved from original code
   if (IsKeyPressed(KEY_ONE)) {
     difficulty = NOVICE;
     Reset();
@@ -1158,7 +1225,6 @@ void Game::handleDifficultyInput() {
     Reset();
     state = PLAYING;
   }
-
   if (IsKeyPressed(KEY_C)) {
     customSelected = 0;
     customPage = 0;
@@ -1248,6 +1314,20 @@ void Game::resetCustom() {
 // -----------------------------------------------------------
 //  drawCustomMenu
 // -----------------------------------------------------------
+// ─── drawCustomMenu ──────────────────────────────────────────
+//
+//  Layout contract (top to bottom, all in screen-fraction units):
+//    0.03  Title text
+//    0.09  Page indicator ("PAGE 1/2")
+//    0.125 Separator line  ← was colliding with page text before
+//    0.14  Cards start     ← pushed down to clear separator
+//    0.93  PLAY/BACK buttons (fraction instead of fixed px so they
+//          don't get clipped on smaller screens)
+//
+//  The preset naming overlay is drawn LAST so it sits on top of
+//  everything. It dims the whole screen first so the dialog feels
+//  modal rather than floating.
+//
 void Game::drawCustomMenu() {
   int W = GetScreenWidth();
   int H = GetScreenHeight();
@@ -1256,15 +1336,27 @@ void Game::drawCustomMenu() {
   drawMenuStars();
   DrawRectangleLinesEx({5, 5, float(W - 10), float(H - 10)}, 3, YELLOW);
 
-  // Title
+  // ── Title ──────────────────────────────────────────────────
   const char *title = "CUSTOM MODE";
   int titleSz = W / 25;
-  DrawText(title, W / 2 - MeasureText(title, titleSz) / 2, H * 0.04f, titleSz,
+  DrawText(title, W / 2 - MeasureText(title, titleSz) / 2, H * 0.03f, titleSz,
            YELLOW);
-  DrawLineEx({float(W) * 0.05f, H * 0.13f}, {float(W) * 0.95f, H * 0.12f}, 2,
-             YELLOW);
 
-  // --- Parameter definitions ---
+  // Page indicator sits below the title, left-aligned to match
+  // the card column so it reads as part of that column.
+  const char *pageStr = (customPage == 0) ? "PAGE 1/2  (TAB for next)"
+                                          : "PAGE 2/2  (TAB for prev)";
+  DrawText(pageStr, W * 0.04f, H * 0.09f, 16, YELLOW);
+
+  // Separator only spans the card column width, not full screen,
+  // so the preset panel on the right has its own visual border.
+  DrawLineEx({float(W) * 0.04f, H * 0.125f}, {float(W) * 0.62f, H * 0.125f}, 1,
+             Fade(YELLOW, 0.5f));
+
+  // ── Parameter list ─────────────────────────────────────────
+  // Each page holds a subset of CustomSettings fields.
+  // We use a local Param struct so draw code stays generic —
+  // every param is just a label, current value, and range.
   struct Param {
     const char *label;
     const char *unit;
@@ -1272,15 +1364,14 @@ void Game::drawCustomMenu() {
     float minV, maxV, step;
   };
 
-  // Page 0: first 9 params, Page 1: remaining 8
   Param page0[9] = {
       {"Rows", "", float(customSettings.rows), 1, 15, 1},
       {"Columns", "", float(customSettings.cols), 1, 20, 1},
       {"Lives", "", float(customSettings.lives), 1, 20, 1},
       {"Alien Speed", "s", customSettings.alienSpeed, 0.05f, 2.0f, 0.05f},
       {"Fire Rate Scale", "x", customSettings.fireRateScale, 0.1f, 5.0f, 0.1f},
-      {"Laser Speed", "", float(-customSettings.laserSpeed), 5, 50,
-       1}, // show positive
+      // laserSpeed is stored negative (upward), displayed positive
+      {"Laser Speed", "", float(-customSettings.laserSpeed), 5, 50, 1},
       {"Laser Damage", "", float(customSettings.laserDamage), 1, 10, 1},
       {"Alien HP", "", float(customSettings.alienHP), 1, 5, 1},
       {"Step Size", "px", float(customSettings.stepSize), 5, 40, 1},
@@ -1291,7 +1382,7 @@ void Game::drawCustomMenu() {
       {"Alien Spacing", "px", customSettings.alienSpacing, 30, 80, 1},
       {"Starting Level", "", float(customSettings.startingLevel), 1, 20, 1},
       {"UFO Frequency", "s", customSettings.ufoFrequency, 5, 60, 1},
-      {"Level Speed Scl", "x", customSettings.levelSpeedScale, 0.5f, 1.0f,
+      {"Level Spd Scale", "x", customSettings.levelSpeedScale, 0.5f, 1.0f,
        0.05f},
       {"Shields", "", float(customSettings.shieldCount), 0, 6, 1},
       {"Score Mult", "x", customSettings.scoreMultiplier, 1.0f, 5.0f, 0.5f},
@@ -1303,7 +1394,7 @@ void Game::drawCustomMenu() {
   float cardW = W * 0.58f;
   float cardX = W * 0.04f;
   float cardH = H * 0.072f;
-  float startY = H * 0.15f;
+  float startY = H * 0.14f; // cleared below separator
 
   for (int i = 0; i < paramCount; i++) {
     float y = startY + i * (cardH + 6);
@@ -1315,11 +1406,10 @@ void Game::drawCustomMenu() {
     DrawRectangleRoundedLines({cardX, y, cardW, cardH}, 0.15f, 6,
                               sel ? YELLOW : Fade(WHITE, 0.2f));
 
-    // Label
     int labelSz = (int)(cardH * 0.38f);
     DrawText(params[i].label, cardX + 14, y + cardH * 0.30f, labelSz, c);
 
-    // Value bar
+    // Progress bar shows where the value sits within [minV, maxV]
     float barX = cardX + cardW * 0.52f;
     float barW = cardW * 0.42f;
     float ratio =
@@ -1330,7 +1420,6 @@ void Game::drawCustomMenu() {
     DrawRectangle(barX, y + cardH * 0.55f, barW * ratio, cardH * 0.18f,
                   sel ? YELLOW : Fade(YELLOW, 0.4f));
 
-    // Value text
     char valStr[32];
     if (params[i].step < 1.0f)
       snprintf(valStr, sizeof(valStr), "%.2f%s", params[i].value,
@@ -1338,177 +1427,214 @@ void Game::drawCustomMenu() {
     else
       snprintf(valStr, sizeof(valStr), "%.0f%s", params[i].value,
                params[i].unit);
+
     int valSz = labelSz;
     DrawText(valStr, barX - MeasureText(valStr, valSz) - 8, y + cardH * 0.25f,
              valSz, c);
 
-    // Arrows
+    // Arrow hints only on the selected row
     if (sel) {
       DrawText("<", barX - MeasureText(valStr, valSz) - 24, y + cardH * 0.25f,
                valSz, YELLOW);
       DrawText(">", barX + barW + 6, y + cardH * 0.25f, valSz, YELLOW);
     }
-
   }
-    // Play button
-    Vector2 mouse2 = GetMousePosition();
-    Rectangle playRect = {cardX + cardW - 120, float(H) - 55, 120, 30};
-    bool playHov = CheckCollisionPointRec(mouse2, playRect);
-    DrawRectangleRounded(playRect, 0.2f, 4,
-                         playHov ? Fade(GREEN, 0.3f) : Fade(GREEN, 0.08f));
-    DrawRectangleRoundedLines(playRect, 0.2f, 4,
-                              playHov ? GREEN : Fade(GREEN, 0.4f));
-    DrawText("PLAY", playRect.x + 38, playRect.y + 8, 18,
-             playHov ? GREEN : Fade(GREEN, 0.7f));
 
-    // Back button
-    Rectangle backRect = {cardX, float(H) - 55, 100, 30};
-    bool backHov = CheckCollisionPointRec(mouse2, backRect);
-    DrawRectangleRounded(backRect, 0.2f, 4,
-                         backHov ? Fade(RED, 0.3f) : Fade(RED, 0.08f));
-    DrawRectangleRoundedLines(backRect, 0.2f, 4,
-                              backHov ? RED : Fade(RED, 0.4f));
-    DrawText("BACK", backRect.x + 22, backRect.y + 8, 18,
-             backHov ? RED : Fade(RED, 0.7f));
+  // ── PLAY / BACK buttons ────────────────────────────────────
+  // Using H * 0.93f instead of H - 55 so buttons scale with
+  // window height and never get clipped on shorter screens.
+  Vector2 mouse = GetMousePosition();
 
-  // ---- Preset panel (right side) ----
+  Rectangle playRect = {cardX + cardW - 120, float(H) - 45, 120, 30};
+  bool playHov = CheckCollisionPointRec(mouse, playRect);
+  DrawRectangleRounded(playRect, 0.2f, 4,
+                       playHov ? Fade(GREEN, 0.3f) : Fade(GREEN, 0.08f));
+  DrawRectangleRoundedLines(playRect, 0.2f, 4,
+                            playHov ? GREEN : Fade(GREEN, 0.4f));
+  DrawText("PLAY", playRect.x + 38, playRect.y + 8, 18,
+           playHov ? GREEN : Fade(GREEN, 0.7f));
+  Rectangle backRect = {cardX, float(H) - 45, 100, 30};
+
+  bool backHov = CheckCollisionPointRec(mouse, backRect);
+  DrawRectangleRounded(backRect, 0.2f, 4,
+                       backHov ? Fade(RED, 0.3f) : Fade(RED, 0.08f));
+  DrawRectangleRoundedLines(backRect, 0.2f, 4, backHov ? RED : Fade(RED, 0.4f));
+  DrawText("BACK", backRect.x + 22, backRect.y + 8, 18,
+           backHov ? RED : Fade(RED, 0.7f));
+
+  // ── Preset panel + hint text ───────────────────────────────
   drawPresetPanel();
 
-  // ---- Page indicator ----
-  const char *pageStr = (customPage == 0) ? "PAGE 1/2  (TAB for next)"
-                                          : "PAGE 2/2  (TAB for prev)";
-  DrawText(pageStr, W * 0.04f, H * 0.10f, 18, YELLOW);
-  // ---- Hints ----
-  const char *hint = "LEFT/RIGHT: Change  UP/DOWN: Navigate  TAB: Page  R: "
-                     "Random  ENTER: Play  BACKSPACE: Back";
+  const char *hint = "LEFT/RIGHT: Change  UP/DOWN: Navigate  "
+                     "TAB: Page  R: Random  ENTER: Play  BACKSPACE: Back";
   int hintSz = W / 80;
-  DrawText(hint, W / 2 - MeasureText(hint, hintSz) / 2, H - 30, hintSz,
-           DARKGRAY);
+  DrawText(hint, W / 2 - MeasureText(hint, hintSz) / 2, H - 22, hintSz,
+           Fade(DARKGRAY, 0.8f));
 
-  // ---- Preset name input overlay ----
+  // ── Preset naming overlay ──────────────────────────────────
+  // Drawn absolutely last so it covers everything.
+  // The full-screen dim makes it feel modal (user knows input
+  // is captured here and nowhere else).
   if (namingPreset) {
-    DrawRectangle(0, 0, W, H, Fade(BLACK, 0.75f));
-    int bW = W * 0.5f, bH = H * 0.25f;
-    int bX = (W - bW) / 2, bY = (H - bH) / 2;
-    DrawRectangleRounded({float(bX), float(bY), float(bW), float(bH)}, 0.1f, 8,
-                         {20, 20, 20, 240});
-    DrawRectangleRoundedLines({float(bX), float(bY), float(bW), float(bH)},
-                              0.1f, 8, YELLOW);
+    DrawRectangle(0, 0, W, H, Fade(BLACK, 0.82f));
 
-    const char *prompt = "NAME THIS PRESET (ENTER to save, ESC to cancel)";
-    int pSz = W / 50;
-    DrawText(prompt, W / 2 - MeasureText(prompt, pSz) / 2, bY + 20, pSz,
+    float bW = W * 0.45f, bH = H * 0.22f;
+    float bX = (W - bW) / 2.0f, bY = (H - bH) / 2.0f;
+    DrawRectangleRounded({bX, bY, bW, bH}, 0.12f, 8, {18, 18, 18, 255});
+    DrawRectangleRoundedLines({bX, bY, bW, bH}, 0.12f, 8, YELLOW);
+
+    const char *prompt = "NAME THIS PRESET";
+    int pSz = W / 40;
+    DrawText(prompt, W / 2 - MeasureText(prompt, pSz) / 2, bY + 18, pSz,
              YELLOW);
+    DrawText("ENTER to save   ESC to cancel",
+             W / 2 - MeasureText("ENTER to save   ESC to cancel", 14) / 2,
+             bY + 18 + pSz + 6, 14, Fade(WHITE, 0.5f));
 
-    // Input box
-    DrawRectangle(bX + 20, bY + bH / 2 - 18, bW - 40, 36, Fade(WHITE, 0.1f));
-    DrawRectangleLinesEx(
-        {float(bX + 20), float(bY + bH / 2 - 18), float(bW - 40), 36}, 2,
-        YELLOW);
+    float ibX = bX + 20, ibY = bY + bH * 0.55f, ibW = bW - 40, ibH = 34;
+    DrawRectangleRounded({ibX, ibY, ibW, ibH}, 0.15f, 4, Fade(WHITE, 0.08f));
+    DrawRectangleRoundedLines({ibX, ibY, ibW, ibH}, 0.15f, 4, YELLOW);
+
     char display[34];
     snprintf(display, sizeof(display), "%s_", presetNameBuf);
-    DrawText(display, bX + 28, bY + bH / 2 - 12, 24, WHITE);
+    DrawText(display, ibX + 10, ibY + 7, 20, WHITE);
   }
 }
 
-// -----------------------------------------------------------
-//  drawPresetPanel  (right side of custom menu)
-// -----------------------------------------------------------
+// ─── drawPresetPanel ─────────────────────────────────────────
+//
+//  The panel is purely a draw function — all click handling
+//  happens here too (draw + interact in one place keeps the
+//  rect calculations from drifting out of sync between draw
+//  and input code).
+//
+//  Layout inside the panel:
+//    pY + 8   "PRESETS" title
+//    pY + 35  separator line
+//    pY + 45  preset rows (36px each)
+//    pY+pH-38 SAVE PRESET button
+//
 void Game::drawPresetPanel() {
   int W = GetScreenWidth();
   int H = GetScreenHeight();
 
   float pX = W * 0.65f;
   float pW = W * 0.31f;
-  float pY = H * 0.15f;
-  float pH = H * 0.70f;
+  float pY = H * 0.14f;
+  float pH = H * 0.65f; // was 0.72f
 
   DrawRectangleRounded({pX, pY, pW, pH}, 0.08f, 8, Fade(WHITE, 0.04f));
   DrawRectangleRoundedLines({pX, pY, pW, pH}, 0.08f, 8, Fade(YELLOW, 0.4f));
 
+  int ptSz = (int)(pW * 0.07f);
   const char *pt = "PRESETS";
-  int ptSz = W / 35;
-  DrawText(pt, pX + pW / 2 - MeasureText(pt, ptSz) / 2, pY + 10, ptSz, YELLOW);
-  DrawLineEx({pX + 10, pY + 40}, {pX + pW - 10, pY + 40}, 1,
+  DrawText(pt, pX + pW / 2 - MeasureText(pt, ptSz) / 2, pY + 8, ptSz, YELLOW);
+  DrawLineEx({pX + 10, pY + 35}, {pX + pW - 10, pY + 35}, 1,
              Fade(YELLOW, 0.4f));
 
   Vector2 mouse = GetMousePosition();
 
   if (presetCount == 0) {
-    const char *empty = "No presets saved";
-    DrawText(empty, pX + pW / 2 - MeasureText(empty, 16) / 2, pY + 60, 16,
-             DARKGRAY);
+    int emptyTxtSz = (int)(pW * 0.055f);
+    int emptyTxtSz2 = (int)(pW * 0.045f);
+
+    DrawText("No presets saved.",
+             pX + pW / 2 - MeasureText("No presets saved.", emptyTxtSz) / 2,
+             pY + 50, emptyTxtSz, Fade(WHITE, 0.6f));
+    DrawText("Press S to save current.",
+             pX + pW / 2 -
+                 MeasureText("Press S to save current.", emptyTxtSz2) / 2,
+             pY + 50 + emptyTxtSz + 8, emptyTxtSz2, Fade(WHITE, 0.4f));
   } else {
-    float rowH = 28.0f;
+    float rowH = 36.0f;
     for (int i = 0; i < presetCount; i++) {
-      float ry = pY + 55 + i * rowH;
-      Rectangle rowRect = {pX + 8, ry - 2, pW - 40, rowH - 2};
-      Rectangle delRect = {pX + pW - 28, ry - 2, 22, rowH - 2};
+      float ry = pY + 45 + i * rowH;
+
+      // Three hit zones per row: the name area loads, the X deletes.
+      // They don't overlap so a misclick on the name never deletes.
+      Rectangle rowRect = {pX + 6, ry, pW - 40, rowH - 3};
+      Rectangle delRect = {pX + pW - 32, ry + 4, 26, rowH - 10};
 
       bool hovered = CheckCollisionPointRec(mouse, rowRect);
-      bool delHovered = CheckCollisionPointRec(mouse, delRect);
+      bool delHov = CheckCollisionPointRec(mouse, delRect);
 
-      // Row highlight
       if (hovered)
-        DrawRectangleRounded(rowRect, 0.2f, 4, Fade(YELLOW, 0.15f));
+        DrawRectangleRounded(rowRect, 0.15f, 4, Fade(YELLOW, 0.1f));
 
-      // Preset name
-      DrawText(TextFormat("%d. %s", i + 1, presets[i].name), pX + 14, ry, 16,
-               hovered ? YELLOW : Fade(WHITE, 0.8f));
+      // Truncate long names so they don't overflow into the buttons
+      char truncName[22];
+      snprintf(truncName, sizeof(truncName), "%d. %.16s", i + 1,
+               presets[i].name);
+      DrawText(truncName, pX + 10, ry + 9, 15,
+               hovered ? YELLOW : Fade(WHITE, 0.85f));
 
-      // LOAD label
-      DrawText("LOAD", pX + pW - 70, ry, 13,
-               hovered ? YELLOW : Fade(YELLOW, 0.35f));
+      // Delete button — red X, clearly destructive
+      DrawRectangleRounded(delRect, 0.2f, 4,
+                           delHov ? Fade(RED, 0.4f) : Fade(RED, 0.08f));
+      DrawRectangleRoundedLines(delRect, 0.2f, 4,
+                                delHov ? RED : Fade(RED, 0.3f));
+      DrawText("X", delRect.x + 8, delRect.y + 3, 14,
+               delHov ? RED : Fade(RED, 0.6f));
 
-      // Delete button
-      DrawText("X", pX + pW - 20, ry, 14, delHovered ? RED : Fade(RED, 0.35f));
-
-      // Click to load
-      if (hovered && !delHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+      // Click name row to load preset into customSettings
+      if (hovered && !delHov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
         customSettings = presets[i].settings;
 
-      // Click to delete
-      if (delHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+      // Click X to delete — shift remaining presets down one slot
+      if (delHov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         for (int j = i; j < presetCount - 1; j++)
           presets[j] = presets[j + 1];
         presetCount--;
         savePresets();
-        break; // vector shifted, stop iterating
+        break; // iterator is now stale, exit loop
       }
     }
   }
 
-  // Save button at bottom
-  Rectangle saveRect = {pX + 10, pY + pH - 36, pW - 20, 26};
-  bool saveHovered = CheckCollisionPointRec(mouse, saveRect);
+  // SAVE PRESET button anchored to bottom of panel
+  Rectangle saveRect = {pX + 8, pY + pH - 38, pW - 16, 28};
+  bool saveHov = CheckCollisionPointRec(mouse, saveRect);
   DrawRectangleRounded(saveRect, 0.2f, 4,
-                       saveHovered ? Fade(GREEN, 0.2f) : Fade(WHITE, 0.03f));
+                       saveHov ? Fade(GREEN, 0.25f) : Fade(GREEN, 0.06f));
   DrawRectangleRoundedLines(saveRect, 0.2f, 4,
-                            saveHovered ? GREEN : Fade(GREEN, 0.3f));
-  DrawText("SAVE PRESET", pX + pW / 2 - MeasureText("SAVE PRESET", 14) / 2,
-           pY + pH - 29, 14, saveHovered ? GREEN : Fade(GREEN, 0.6f));
+                            saveHov ? GREEN : Fade(GREEN, 0.35f));
+  int saveTxtSz = (int)(pW * 0.05f);
+  DrawText("SAVE PRESET",
+           pX + pW / 2 - MeasureText("SAVE PRESET", saveTxtSz) / 2,
+           pY + pH - 30, saveTxtSz, saveHov ? GREEN : Fade(GREEN, 0.6f));
 
-  if (saveHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+  if (saveHov && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
       presetCount < MAX_PRESETS) {
     namingPreset = true;
     presetNameLen = 0;
     memset(presetNameBuf, 0, sizeof(presetNameBuf));
   }
 }
-// -----------------------------------------------------------
-//  handleCustomMenuInput
-// -----------------------------------------------------------
+
+// ─── handleCustomMenuInput ───────────────────────────────────
+//
+//  Input is split into three phases:
+//    1. Preset naming mode — captures all keyboard, blocks everything else.
+//    2. Mouse — processed unconditionally after naming check.
+//    3. Keyboard — standard nav + value editing.
+//
+//  The clampF lambda is defined once and reused by both mouse
+//  scroll and keyboard left/right, keeping the range logic in
+//  one place and avoiding drift if limits ever change.
+//
 void Game::handleCustomMenuInput() {
   int W = GetScreenWidth();
   int H = GetScreenHeight();
   Vector2 mouse = GetMousePosition();
 
+  // Card geometry — must match drawCustomMenu exactly so mouse
+  // hit zones line up with what the player sees.
   float cardW = W * 0.58f;
   float cardX = W * 0.04f;
   float cardH = H * 0.072f;
-  float startY = H * 0.15f;
+  float startY = H * 0.14f;
 
-  // --- Preset naming mode ---
+  // ── Phase 1: preset naming ─────────────────────────────────
   if (namingPreset) {
     int key = GetCharPressed();
     while (key > 0) {
@@ -1520,6 +1646,7 @@ void Game::handleCustomMenuInput() {
     }
     if (IsKeyPressed(KEY_BACKSPACE) && presetNameLen > 0)
       presetNameBuf[--presetNameLen] = '\0';
+
     if (IsKeyPressed(KEY_ENTER) && presetNameLen > 0 &&
         presetCount < MAX_PRESETS) {
       CustomPreset &p = presets[presetCount++];
@@ -1536,125 +1663,129 @@ void Game::handleCustomMenuInput() {
       memset(presetNameBuf, 0, sizeof(presetNameBuf));
       presetNameLen = 0;
     }
-    return; // only return here, nothing after
+    return; // block all other input while naming
   }
 
-  // --- MOUSE: Page toggle ---
-  Rectangle pageRect = {float(W) * 0.04f, float(H) * 0.085f, 260, 24};
+  // ── Shared clamp helper ────────────────────────────────────
+  auto clampF = [](float v, float mn, float mx) {
+    return v < mn ? mn : (v > mx ? mx : v);
+  };
+
+  // ── Phase 2: mouse ─────────────────────────────────────────
+
+  // Clicking the page indicator text toggles pages
+  Rectangle pageRect = {float(W) * 0.04f, float(H) * 0.085f, 260, 20};
   if (CheckCollisionPointRec(mouse, pageRect) &&
       IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     customPage = 1 - customPage;
     customSelected = 0;
   }
 
-  // --- MOUSE: Parameter cards ---
+  // Each card: left-click selects it, scroll wheel changes its value
   int paramCount2 = (customPage == 0) ? 9 : 8;
-  auto clampF = [](float v, float mn, float mx) {
-    return v < mn ? mn : (v > mx ? mx : v);
-  };
-
   for (int i = 0; i < paramCount2; i++) {
     float y = startY + i * (cardH + 6);
     Rectangle cardRect = {cardX, y, cardW, cardH};
-    if (CheckCollisionPointRec(mouse, cardRect)) {
-      if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        customSelected = i;
+    if (!CheckCollisionPointRec(mouse, cardRect))
+      continue;
 
-      float wheel = GetMouseWheelMove();
-      if (wheel != 0) {
-        customSelected = i;
-        float delta = (wheel > 0) ? 1.0f : -1.0f;
-        if (customPage == 0) {
-          switch (i) {
-          case 0:
-            customSettings.rows = clampF(customSettings.rows + delta, 1, 15);
-            break;
-          case 1:
-            customSettings.cols = clampF(customSettings.cols + delta, 1, 20);
-            break;
-          case 2:
-            customSettings.lives = clampF(customSettings.lives + delta, 1, 20);
-            break;
-          case 3:
-            customSettings.alienSpeed =
-                clampF(customSettings.alienSpeed + delta * 0.05f, 0.05f, 2.0f);
-            break;
-          case 4:
-            customSettings.fireRateScale =
-                clampF(customSettings.fireRateScale + delta * 0.1f, 0.1f, 5.0f);
-            break;
-          case 5:
-            customSettings.laserSpeed =
-                -(clampF(-customSettings.laserSpeed + delta, 5, 50));
-            break;
-          case 6:
-            customSettings.laserDamage =
-                clampF(customSettings.laserDamage + delta, 1, 10);
-            break;
-          case 7:
-            customSettings.alienHP =
-                clampF(customSettings.alienHP + delta, 1, 5);
-            break;
-          case 8:
-            customSettings.stepSize =
-                clampF(customSettings.stepSize + delta, 5, 40);
-            break;
-          }
-        } else {
-          switch (i) {
-          case 0:
-            customSettings.descentSpeed =
-                clampF(customSettings.descentSpeed + delta, 5, 40);
-            break;
-          case 1:
-            customSettings.gridStartY =
-                clampF(customSettings.gridStartY + delta * 0.01f, 0.05f, 0.50f);
-            break;
-          case 2:
-            customSettings.alienSpacing =
-                clampF(customSettings.alienSpacing + delta, 30, 80);
-            break;
-          case 3:
-            customSettings.startingLevel =
-                clampF(customSettings.startingLevel + delta, 1, 20);
-            break;
-          case 4:
-            customSettings.ufoFrequency =
-                clampF(customSettings.ufoFrequency + delta, 5, 60);
-            break;
-          case 5:
-            customSettings.levelSpeedScale = clampF(
-                customSettings.levelSpeedScale + delta * 0.05f, 0.5f, 1.0f);
-            break;
-          case 6:
-            customSettings.shieldCount =
-                clampF(customSettings.shieldCount + delta, 0, 6);
-            break;
-          case 7:
-            customSettings.scoreMultiplier = clampF(
-                customSettings.scoreMultiplier + delta * 0.5f, 1.0f, 5.0f);
-            break;
-          }
-        }
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+      customSelected = i;
+
+    float wheel = GetMouseWheelMove();
+    if (wheel == 0)
+      continue;
+
+    customSelected = i;
+    float delta = (wheel > 0) ? 1.0f : -1.0f;
+
+    if (customPage == 0) {
+      switch (i) {
+      case 0:
+        customSettings.rows = clampF(customSettings.rows + delta, 1, 15);
+        break;
+      case 1:
+        customSettings.cols = clampF(customSettings.cols + delta, 1, 20);
+        break;
+      case 2:
+        customSettings.lives = clampF(customSettings.lives + delta, 1, 20);
+        break;
+      case 3:
+        customSettings.alienSpeed =
+            clampF(customSettings.alienSpeed + delta * 0.05f, 0.05f, 2.0f);
+        break;
+      case 4:
+        customSettings.fireRateScale =
+            clampF(customSettings.fireRateScale + delta * 0.1f, 0.1f, 5.0f);
+        break;
+      case 5:
+        customSettings.laserSpeed =
+            -(clampF(-customSettings.laserSpeed + delta, 5, 50));
+        break;
+      case 6:
+        customSettings.laserDamage =
+            clampF(customSettings.laserDamage + delta, 1, 10);
+        break;
+      case 7:
+        customSettings.alienHP = clampF(customSettings.alienHP + delta, 1, 5);
+        break;
+      case 8:
+        customSettings.stepSize =
+            clampF(customSettings.stepSize + delta, 5, 40);
+        break;
+      }
+    } else {
+      switch (i) {
+      case 0:
+        customSettings.descentSpeed =
+            clampF(customSettings.descentSpeed + delta, 5, 40);
+        break;
+      case 1:
+        customSettings.gridStartY =
+            clampF(customSettings.gridStartY + delta * 0.01f, 0.05f, 0.50f);
+        break;
+      case 2:
+        customSettings.alienSpacing =
+            clampF(customSettings.alienSpacing + delta, 30, 80);
+        break;
+      case 3:
+        customSettings.startingLevel =
+            clampF(customSettings.startingLevel + delta, 1, 20);
+        break;
+      case 4:
+        customSettings.ufoFrequency =
+            clampF(customSettings.ufoFrequency + delta, 5, 60);
+        break;
+      case 5:
+        customSettings.levelSpeedScale =
+            clampF(customSettings.levelSpeedScale + delta * 0.05f, 0.5f, 1.0f);
+        break;
+      case 6:
+        customSettings.shieldCount =
+            clampF(customSettings.shieldCount + delta, 0, 6);
+        break;
+      case 7:
+        customSettings.scoreMultiplier =
+            clampF(customSettings.scoreMultiplier + delta * 0.5f, 1.0f, 5.0f);
+        break;
       }
     }
   }
 
-  // --- MOUSE: Play button ---
-  Rectangle playRect = {cardX + cardW - 120, float(H) - 55, 120, 30};
+  // PLAY / BACK buttons — geometry must match drawCustomMenu
+ Rectangle playRect = {cardX + cardW - 120, float(H) - 45, 120, 30};
   if (CheckCollisionPointRec(mouse, playRect) &&
       IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     resetCustom();
     state = PLAYING;
   }
 
-  // --- MOUSE: Back button ---
-  Rectangle backRect = {cardX, float(H) - 55, 100, 30};
+  Rectangle backRect = {cardX, float(H) - 45, 100, 30};
   if (CheckCollisionPointRec(mouse, backRect) &&
       IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     state = DIFFICULTY_SELECT;
 
-  // --- KEYBOARD ---
+  // ── Phase 3: keyboard ──────────────────────────────────────
   int paramCount = (customPage == 0) ? 9 : 8;
 
   if (IsKeyPressed(KEY_BACKSPACE)) {
@@ -1671,6 +1802,7 @@ void Game::handleCustomMenuInput() {
   if (IsKeyPressed(KEY_DOWN))
     customSelected = (customSelected + 1) % paramCount;
 
+  // R randomises every field so players can discover wild configs
   if (IsKeyPressed(KEY_R)) {
     customSettings.rows = GetRandomValue(1, 15);
     customSettings.cols = GetRandomValue(1, 20);
@@ -1699,6 +1831,7 @@ void Game::handleCustomMenuInput() {
     return;
   }
 
+  // F1-F10 quick-load presets by index
   for (int i = 0; i < presetCount && i < MAX_PRESETS; i++) {
     if (IsKeyPressed(KEY_F1 + i)) {
       customSettings = presets[i].settings;
@@ -1706,6 +1839,8 @@ void Game::handleCustomMenuInput() {
     }
   }
 
+  // LEFT/RIGHT change the currently selected parameter.
+  // IsKeyPressedRepeat fires repeatedly while held for fast scrubbing.
   float delta = 0;
   if (IsKeyPressed(KEY_LEFT) || IsKeyPressedRepeat(KEY_LEFT))
     delta = -1;
@@ -1792,6 +1927,7 @@ void Game::handleCustomMenuInput() {
     }
   }
 }
+
 void Game::drawPauseMenu() {
   int W = GetScreenWidth();
   int H = GetScreenHeight();
